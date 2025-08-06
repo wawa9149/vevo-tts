@@ -72,8 +72,6 @@ sudo docker images
 
 ### 1-2. Docker Image 다운로드
 
-#### 방법 1: Docker Hub에서 Pull(추천) 
-
 ```bash
 # CUDA 11.7 환경
 sudo docker pull sujinkoo/vevo_env:3.10-slim-bullseye
@@ -82,19 +80,6 @@ sudo docker pull sujinkoo/vevo_env:3.10-slim-bullseye
 sudo docker pull sujinkoo/vevo_env:cuda11.8
 ```
 
-#### 방법 2: Google Drive에서 tar 파일 다운로드 후 로드
-
-1. [VEVO Docker Image (vevo\_env.tar, vevo\_env_cuda11.8.tar)](https://drive.google.com/drive/folders/1KEpKJrUQoWdHB9fsxm0VS4NzYg8nAd4w?usp=sharing) 다운로드
-2. Docker 이미지로 가져오기:
-
-```bash
-# CUDA 11.7 환경
-sudo docker load -i vevo_env.tar
-
-# CUDA 11.8 환경 (H100과 호환)
-sudo docker load -i vevo_env_cuda11.8.tar
-
-```
 
 ---
 
