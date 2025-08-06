@@ -146,6 +146,24 @@ exit
 sudo docker exec -it <컨테이너 이름> /bin/bash
 ```
 
+---
+## 2. Inference
+Inference 방법은 [아래 Inference Script](#inference-script) 섹션을 참고하세요.  
+Pretrained 모델은 자동으로 Hugging Face에서 다운로드됩니다.
+
+---
+
+## 3. Train
+
+### 3-1. Checkpoint 다운로드
+(여기에 checkpoint 다운로드 명령어와 경로 작성)
+
+### 3-2. 한국어 데이터셋 파일 구성
+(여기에 한국어 데이터셋 폴더 구조 예시 및 cache 생성 방법 작성)
+
+### 3-2. 그 외 train 관련 사항
+Training 방법은 [아래 Training Recipe](#training-recipe) 섹션을 참고하세요.
+
 
 ---
 
