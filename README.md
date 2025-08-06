@@ -75,7 +75,11 @@ sudo docker images
 #### 방법 1: Docker Hub에서 Pull(추천) 
 
 ```bash
+# CUDA 11.7 환경
 sudo docker pull sujinkoo/vevo_env:3.10-slim-bullseye
+
+# CUDA 11.8 환경 (H100과 호환)
+sudo docker pull sujinkoo/vevo_env:cuda11.8
 ```
 
 #### 방법 2: Google Drive에서 tar 파일 다운로드 후 로드
