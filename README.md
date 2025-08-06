@@ -1,3 +1,153 @@
+# VEVO Model 환경 세팅 & 실행 가이드
+
+> 현재 **Amphion 전체 GitHub**를 fork하여 사용 중입니다.  
+> Repository: [https://github.com/open-mmlab/Amphion](https://github.com/open-mmlab/Amphion)
+
+---
+
+## ✅ 진행 체크리스트
+
+- [x] **Docker 환경 세팅**  
+- [ ] **Checkpoint 다운로드**  
+- [ ] **Inference 실행**  
+- [ ] **한국어 데이터셋 세팅** (Cache 파일 생성)  
+- [ ] **Training 실행**  
+- [ ] **Code 폴더 구조 간단 설명**  
+
+---
+
+## 1. Docker 환경 세팅
+
+### 1-1. Docker & NVIDIA-Docker 설치
+
+#### NVIDIA Docker 저장소 설정
+```bash
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
+    && curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add - \
+    && curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | \
+       sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+````
+
+#### NVIDIA-Docker 설치
+
+```bash
+sudo apt-get update
+sudo apt-get install -y nvidia-docker2
+```
+
+#### Docker 재시작
+
+```bash
+sudo systemctl restart docker
+```
+
+#### 설치 확인
+
+```bash
+sudo docker ps
+sudo docker images
+```
+
+---
+
+### 1-2. Docker Image 다운로드
+
+#### 방법 1: Docker Hub에서 Pull(추천) 
+
+```bash
+sudo docker pull sujinkoo/vevo_env:3.10-slim-bullseye
+```
+
+#### 방법 2: Google Drive에서 tar 파일 다운로드 후 로드
+
+1. [VEVO Docker Image (vevo\_env.tar)](https://drive.google.com/file/d/16xwBAOGQQtgGvcYGMJb-Gl1M3C0C-bxu/view?usp=sharing) 다운로드
+2. Docker 이미지로 가져오기:
+
+```bash
+sudo docker load -i vevo_env.tar
+```
+
+---
+
+### 1-3. Docker Image 확인
+
+```bash
+sudo docker images
+```
+
+예시 출력:
+
+```
+REPOSITORY          TAG                  IMAGE ID       CREATED       SIZE
+sujinkoo/vevo_env   3.10-slim-bullseye   4ef47ff2895c   7 hours ago   22GB
+```
+
+---
+
+### 1-4. 컨테이너 생성
+
+#### 명령어 형식
+```bash
+sudo docker run --gpus all -dit \
+    --shm-size=8G \
+    -v <호스트 절대경로>:<컨테이너 절대경로> \
+    --name <컨테이너 이름> \
+    <이미지 이름:TAG>
+
+#예시
+sudo docker run --gpus all -dit \
+    --shm-size=8G \
+    -v /home/vmuser/:/home/vmuser/ \
+    --name vevo_env \
+    sujinkoo/vevo_env:3.10-slim-bullseye
+```
+
+---
+
+### 1-5. 컨테이너 실행 및 접속
+
+#### 실행 중 컨테이너 확인
+
+```bash
+sudo docker ps
+```
+
+예시 출력:
+```
+CONTAINER ID   IMAGE                                  COMMAND     CREATED          STATUS          PORTS     NAMES
+48a08f7b08e7   sujinkoo/vevo_env:3.10-slim-bullseye   "python3"   13 minutes ago   Up 13 minutes             vevo_env
+```
+
+#### 컨테이너 접속
+
+```bash
+sudo docker exec -it <컨테이너 이름> /bin/bash
+
+# 예시
+sudo docker exec -it vevo_env /bin/bash
+혹은
+sudo docker exec -it 48a08f7b08e7 /bin/bash
+```
+
+---
+
+### 1-6. Docker 환경 종료 / 재실행
+
+#### 종료
+
+```bash
+exit
+```
+
+#### 재실행
+
+```bash
+sudo docker exec -it <컨테이너 이름> /bin/bash
+```
+
+
+---
+
 # Vevo: Controllable Zero-Shot Voice Imitation with Self-Supervised Disentanglement
 
 [![arXiv](https://img.shields.io/badge/OpenReview-Paper-COLOR.svg)](https://openreview.net/pdf?id=anQDiQZhDP)
