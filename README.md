@@ -2,6 +2,7 @@
 
 > 현재 **Amphion 전체 GitHub**를 fork하여 사용 중입니다.  
 > Repository: [https://github.com/open-mmlab/Amphion](https://github.com/open-mmlab/Amphion)
+> 공식 VEVO README: [https://github.com/open-mmlab/Amphion/tree/main/models/vc/vevo](https://github.com/open-mmlab/Amphion/tree/main/models/vc/vevo)
 
 ---
 
