@@ -1,20 +1,39 @@
+
+## ✅ 진행 체크리스트
+
+- [x] **Docker 환경 세팅**  
+- [ ] **한국어 데이터셋 세팅** (Cache 파일 생성)  
+- [ ] **Training 실행**  
+- [ ] **Code 폴더 구조 간단 설명**  
+
 # VEVO Model 환경 세팅 & 실행 가이드
 
 > 현재 **Amphion 전체 GitHub**를 fork하여 사용 중입니다.  
 > Repository: [https://github.com/open-mmlab/Amphion](https://github.com/open-mmlab/Amphion)
 > 공식 VEVO README: [https://github.com/open-mmlab/Amphion/tree/main/models/vc/vevo](https://github.com/open-mmlab/Amphion/tree/main/models/vc/vevo)
 
----
+## 0. Git 설치 및 저장소 Clone
 
-## ✅ 진행 체크리스트
+### Git 설치 (Ubuntu/Debian 기준)
+```bash
+apt update
+apt install -y git
+```
+### 작업 디렉토리로 이동
+```
+cd home/vmuser
+```
 
-- [x] **Docker 환경 세팅**  
-- [ ] **Checkpoint 다운로드**  
-- [ ] **Inference 실행**  
-- [ ] **한국어 데이터셋 세팅** (Cache 파일 생성)  
-- [ ] **Training 실행**  
-- [ ] **Code 폴더 구조 간단 설명**  
+### 저장소 Clone
+```
+# Fork한 저장소
+git clone https://github.com/sujin-koo/vevo.git
+cd vevo
 
+# 또는 공식 Amphion 저장소
+git clone https://github.com/open-mmlab/Amphion.git
+cd Amphion
+```
 ---
 
 ## 1. Docker 환경 세팅
