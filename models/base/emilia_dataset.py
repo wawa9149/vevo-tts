@@ -37,6 +37,7 @@ MNT_PATH = "[Please fill out your emilia data root path]"
 CACHE_PATH = "[Please fill out your emilia cache path]"
 
 
+
 class EmiliaDataset(torch.utils.data.Dataset):
     def __init__(
         self,
@@ -46,6 +47,7 @@ class EmiliaDataset(torch.utils.data.Dataset):
 
         assert cfg is not None
 
+        
         self.cache_type = cache_type
         self.cfg = cfg
 
@@ -57,6 +59,7 @@ class EmiliaDataset(torch.utils.data.Dataset):
         self.mnt_path = MNT_PATH
 
         self.language_list = ["zh", "en"]  # Data language list
+        #self.language_list = ["ko"]
         self.wav_path_index2duration = []
         self.wav_path_index2phonelen = []
         self.index2num_frames = []
@@ -185,6 +188,7 @@ class EmiliaDataset(torch.utils.data.Dataset):
 
     def get_phone_count_and_duration(self, meta, idx_list):
         new_meta = {}
+        
         if meta[0]["language"] not in self.language_list:
             new_meta["0"] = meta[0]
             return new_meta
@@ -214,31 +218,46 @@ class EmiliaDataset(torch.utils.data.Dataset):
             self.index2num_frames.append(duration * 50)
             # self.index2num_frames.append(duration * self.cfg.preprocess.sample_rate)
 
-    def get_meta_from_wav_path(self, wav_path):
-        wav_path = wav_path.replace("wav_new/", "")
-        index = int(wav_path.split("_")[-1].split(".")[0])
-        audio_name = "_".join(wav_path.split("/")[-1].split("_")[:-1])
-        dir_name = "/".join(wav_path.split("/")[:-1])
-        json_name = audio_name + "_fixzh.json"
-        json_path = dir_name + "/" + json_name
-        meta = None
-        if self.cache_type == "meta":
-            meta = self.json_path2meta[json_path][str(index)]
-            return meta
-        elif self.cache_type == "path":
-            try:
-                buffer = json_path.replace("_fixzh", "")
-                if "/MLS/" in json_path:
-                    with open(buffer, "r") as f:
-                        meta = json.load(f)[os.path.basename(wav_path)]
-                else:
-                    with open(buffer, "r") as f:
-                        meta = json.load(f)[index]
 
-            except Exception as e:
-                logger.info("Error json: {} error: {}".format(json_path, e))
-        del index, audio_name, dir_name, json_name, json_path
+    def get_meta_from_wav_path(self, wav_path):
+        
+        
+        if wav_path.startswith(self.mnt_path):
+            wav_path = wav_path[len(self.mnt_path):]
+
+        try:
+            idx = self.wav_paths.index(wav_path)
+        except ValueError:
+            logger.warning(f"Cannot find wav path in cache: {wav_path}")
+            return None
+
+        meta = {
+            "duration": self.wav_path_index2duration[idx],
+            "phone_count": self.wav_path_index2phonelen[idx]
+        }
+
+       
+        try:
+            
+            json_name = os.path.basename(wav_path).replace(".wav", ".json")  
+            json_path = os.path.join(self.mnt_path, os.path.dirname(wav_path), json_name)
+
+            with open(json_path, "r", encoding="utf-8") as f:
+                json_data = json.load(f)
+
+            inner = json_data.get("0", {})
+            if "text" in inner and "language" in inner:
+                meta.update(inner)
+            else:
+                logger.warning(f"'text' or 'language' missing in {json_path}")
+                return None
+
+        except Exception as e:
+            logger.warning(f"Failed to load json: {json_path}, error: {e}")
+            return None
+
         return meta
+
 
     def __len__(self):
         return self.wav_paths.__len__()
@@ -247,7 +266,10 @@ class EmiliaDataset(torch.utils.data.Dataset):
         return self.wav_path_index2duration[index] * 50
 
     def __getitem__(self, idx):
+        
         wav_path = self.wav_paths[idx]
+        
+        
         file_bytes = None
         try:
             # wav_path = MNT_PATH + "wav_new/" + wav_path.replace("_new", "")
@@ -261,6 +283,7 @@ class EmiliaDataset(torch.utils.data.Dataset):
             return self.__getitem__(random_index)
 
         meta = self.get_meta_from_wav_path(wav_path)
+        import pdb; pdb.set_trace()
         if file_bytes is not None and meta is not None:
             buffer = file_bytes
             try:
