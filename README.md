@@ -100,11 +100,15 @@ sujinkoo/vevo_env   3.10-slim-bullseye   4ef47ff2895c   7 hours ago   22GB
 
 ### 1-4. 컨테이너 생성
 
+주의: -v 옵션으로 폴더를 마운트할 때는 /home 폴더뿐만 아니라 /data 등 HDD 경로도 추가로 마운트해줘야 합니다.
+-v 옵션은 여러 번 사용할 수 있으며, 마운트를 하지 않으면 Docker 컨테이너 내부에서 해당 폴더에 접근할 수 없습니다.
+
 #### 명령어 형식
 ```bash
 sudo docker run --gpus all -dit \
     --shm-size=8G \
-    -v <호스트 절대경로>:<컨테이너 절대경로> \
+    -v <호스트 절대경로1>:<컨테이너 절대경로1> \
+    -v <호스트 절대경로2>:<컨테이너 절대경로2> \
     --name <컨테이너 이름> \
     <이미지 이름:TAG>
 
@@ -112,8 +116,9 @@ sudo docker run --gpus all -dit \
 sudo docker run --gpus all -dit \
     --shm-size=8G \
     -v /home/vmuser/:/home/vmuser/ \
+    -v /data/:/data/ \
     --name vevo_env \
-    sujinkoo/vevo_env:3.10-slim-bullseye
+    sujinkoo/vevo_env:cuda11.8
 ```
 
 ---
@@ -128,8 +133,8 @@ sudo docker ps
 
 예시 출력:
 ```
-CONTAINER ID   IMAGE                                  COMMAND     CREATED          STATUS          PORTS     NAMES
-48a08f7b08e7   sujinkoo/vevo_env:3.10-slim-bullseye   "python3"   13 minutes ago   Up 13 minutes             vevo_env
+CONTAINER ID   IMAGE                        COMMAND     CREATED         STATUS         PORTS     NAMES
+90e1c820ad6a   sujinkoo/vevo_env:cuda11.8   "python3"   6 seconds ago   Up 5 seconds             vevo_env
 ```
 
 #### 컨테이너 접속
@@ -140,7 +145,7 @@ sudo docker exec -it <컨테이너 이름> /bin/bash
 # 예시
 sudo docker exec -it vevo_env /bin/bash
 혹은
-sudo docker exec -it 48a08f7b08e7 /bin/bash
+sudo docker exec -it 90e1c820ad6a /bin/bash
 ```
 
 ---
