@@ -1,7 +1,8 @@
 
 ## ✅ 진행 체크리스트
 
-- [x] **Docker 환경 세팅**  
+- [x] **Docker 환경 세팅**
+- [x] **한국어 평가코드**
 - [ ] **한국어 데이터셋 세팅** (Cache 파일 생성)  
 - [ ] **Training 실행**  
 - [ ] **Code 폴더 구조 간단 설명**  
@@ -176,6 +177,28 @@ Pretrained 모델은 자동으로 Hugging Face에서 다운로드됩니다.
 
 ### 3-2. 그 외 train 관련 사항
 Training 방법은 [아래 Training Recipe](#training-recipe) 섹션을 참고하세요.
+
+---
+
+## 4. Evaluation
+
+한국어에 대해 CER, WER, SECS 측정
+```
+./evaluate\_korean/evaluate\_korean.py
+
+#구성
+- converted_folder: 변환된 음성 폴더 (예: TTS 결과)
+- reference_folder: 참고용 음성 폴더 (현재는 같은 파일로 구성되어 있음)
+- transcription_json: 각 음성 파일에 대한 정답 문장 
+
+
+#예시
+
+python ./evaluate_korean/evaluate_korean.py \
+  --converted_folder ./evaluate_korean/output_folder \
+  --reference_folder ./evaluate_korean/reference_folder \
+  --transcription_json ./evaluate_korean/examples.json
+```
 
 
 ---
