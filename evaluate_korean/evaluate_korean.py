@@ -1,12 +1,22 @@
+#pip install jiwer resemblyzer 
+
 import os
 import json
 import numpy as np
 import torch
 from tqdm import tqdm
-from jiwer import wer, cer
+from jiwer import wer, cer, Compose, RemovePunctuation, ToLowerCase, RemoveMultipleSpaces, Strip
 from resemblyzer import preprocess_wav, VoiceEncoder
 from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
 import torchaudio
+
+
+normalization = Compose([
+    RemovePunctuation(),
+    ToLowerCase(),
+    RemoveMultipleSpaces(),
+    Strip()
+])
 
 
 def transcribe_korean_whisper(audio_path, processor, model):
@@ -27,9 +37,21 @@ def compute_cer_wer_korean(cnv_folder, transcriptions_dict, processor, model):
             continue
         gt = transcriptions_dict[fname].strip()
         hyp = transcribe_korean_whisper(os.path.join(cnv_folder, fname), processor, model).strip()
-        cer_list.append(cer(gt, hyp))
-        wer_list.append(wer(gt, hyp))
+
+        # 정규화
+        gt_norm = normalization(gt)
+        hyp_norm = normalization(hyp)
+
+        print(f"\n📂 {fname}")
+        print(f"GT     : {gt}")
+        print(f"ASR    : {hyp}")
+        print(f"GT(N)  : {gt_norm}")
+        print(f"ASR(N) : {hyp_norm}")
+
+        cer_list.append(cer(gt_norm, hyp_norm))
+        wer_list.append(wer(gt_norm, hyp_norm))
     return np.mean(cer_list), np.mean(wer_list)
+
 
 
 def compute_secs(cnv_folder, ref_folder):
