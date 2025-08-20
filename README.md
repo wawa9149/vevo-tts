@@ -1,10 +1,18 @@
+# Project Description
 
-## ✅ 진행 체크리스트
+This repository is a fork of the **Amphion** project, modified for **VEVO TTS** experiments.
 
-- [x] **Docker 환경 세팅**
-- [x] **한국어 평가코드**
-- [x] **한국어 데이터셋 세팅** 
-- [ ] **Code 간단 설명**  
+## Dataset Setup
+
+The current code is configured for the following datasets:
+
+* **Emilia-Korean Dataset**
+* **AIHub Korean Dataset**
+
+(Some parts of the code are currently being modified.)
+
+---
+
 
 # VEVO Model 환경 세팅 & 실행 가이드
 
