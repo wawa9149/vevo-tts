@@ -33,8 +33,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-MNT_PATH = "[Please fill out your emilia data root path]"
-CACHE_PATH = "[Please fill out your emilia cache path]"
+MNT_PATH = "/data/dataset-vevo/dataset-ko"
+CACHE_PATH = "/data/dataset-vevo/dataset-ko-cache"
 
 
 class EmiliaDataset(torch.utils.data.Dataset):
@@ -219,7 +219,8 @@ class EmiliaDataset(torch.utils.data.Dataset):
         index = int(wav_path.split("_")[-1].split(".")[0])
         audio_name = "_".join(wav_path.split("/")[-1].split("_")[:-1])
         dir_name = "/".join(wav_path.split("/")[:-1])
-        json_name = audio_name + "_fixzh.json"
+        # original code: json_name = audio_name + "_fixzh.json"
+        json_name = audio_name + ".json"
         json_path = dir_name + "/" + json_name
         meta = None
         if self.cache_type == "meta":
@@ -232,12 +233,24 @@ class EmiliaDataset(torch.utils.data.Dataset):
                     with open(buffer, "r") as f:
                         meta = json.load(f)[os.path.basename(wav_path)]
                 else:
+                    # original 코드
+                    # with open(buffer, "r") as f:
+                    #     meta = json.load(f)[index]
+
                     with open(buffer, "r") as f:
-                        meta = json.load(f)[index]
+                        data = json.load(f)
+                        if isinstance(data, list):  # 리스트라면
+                            meta = data[index]
+                        elif isinstance(data, dict):  # 딕셔너리라면
+                            meta = data[str(index)]
+                        else:
+                            raise ValueError(f"Unexpected JSON structure: {type(data)}")
+
 
             except Exception as e:
                 logger.info("Error json: {} error: {}".format(json_path, e))
         del index, audio_name, dir_name, json_name, json_path
+        
         return meta
 
     def __len__(self):
