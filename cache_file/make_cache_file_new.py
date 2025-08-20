@@ -94,7 +94,7 @@ def count_hangul_syllables(text: str) -> int:
 import pdb; pdb.set_trace()
 # ===================== 경로 설정 =====================
 MNT_PATH   = "/hdd_ext/hdd2/sujin/MAGO/mago-dataset"            # EmiliaDataset의 MNT_PATH와 동일
-CACHE_PATH = "/hdd_ext/hdd2/sujin/MAGO/mago-dataset/emilia_cache"  # pkl 4개 저장 위치
+CACHE_PATH = "/hdd_ext/hdd2/sujin/MAGO/mago-dataset_cache"  # pkl 4개 저장 위치
 
 AIHUB_ROOT          = f"{MNT_PATH}/aihub_ko"
 DATASET_LARGE       = f"{AIHUB_ROOT}/dataset_large"
