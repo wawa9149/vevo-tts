@@ -195,7 +195,7 @@ class AutoregressiveTransformerTrainer(BaseTrainer):
 
             pretrained_path = self.cfg.model.input_repcodec.pretrained_path
             if ".bin" in pretrained_path:
-                self.vqvae_input.load_state_dict(torch.load(pretrained_path))
+                self.vqvae_input.load_state_dict(torch.load(pretrained_path, map_location=torch.device("cpu")))
             elif ".safetensors" in pretrained_path:
                 safetensors.torch.load_model(self.vqvae_input, pretrained_path)
             self.vqvae_input.to(self.accelerator.device)
@@ -230,7 +230,7 @@ class AutoregressiveTransformerTrainer(BaseTrainer):
 
             pretrained_path = self.cfg.model.output_repcodec.pretrained_path
             if ".bin" in pretrained_path:
-                self.vqvae_output.load_state_dict(torch.load(pretrained_path))
+                self.vqvae_output.load_state_dict(torch.load(pretrained_path, map_location=torch.device("cpu")))
             elif ".safetensors" in pretrained_path:
                 safetensors.torch.load_model(self.vqvae_output, pretrained_path)
             self.vqvae_output.to(self.accelerator.device)

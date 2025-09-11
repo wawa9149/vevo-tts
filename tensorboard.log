@@ -1,0 +1,78 @@
+nohup: ignoring input
+TensorFlow installation not found - running with reduced feature set.
+
+NOTE: Using experimental fast data loading logic. To disable, pass
+    "--load_fast=false" and report issues on GitHub. More details:
+    https://github.com/tensorflow/tensorboard/issues/4784
+
+TensorBoard 2.20.0 at http://0.0.0.0:6009/ (Press CTRL+C to quit)
+E0905 00:12:26.015177 139914976937536 _internal.py:97] 59.10.172.240 - - [05/Sep/2025 00:12:26] code 400, message Bad request version ('EyÇ1uLø\x9emz1á9Pk¶£\x06BU9\x04\x11[xs\x00*ºº\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0905 00:12:26.034368 139914976937536 _internal.py:97] 59.10.172.240 - - [05/Sep/2025 00:12:26] code 400, message Bad request version ('h³j5\x04t¤+p¨ïç¬C\x00*zz\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0905 00:12:26.051538 139914976937536 _internal.py:97] 59.10.172.240 - - [05/Sep/2025 00:12:26] code 400, message Bad request version ('wÃ\x9aq\x00*úú\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0905 00:12:26.067892 139914976937536 _internal.py:97] 59.10.172.240 - - [05/Sep/2025 00:12:26] code 400, message Bad request version ('\x9c$léùØfO\x9b5\x90ÉYN\x98d=\x96Ç«s\\º&>H÷\x00*\x9a\x9a\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0905 09:10:50.528570 139914985330240 _internal.py:97] 59.10.172.240 - - [05/Sep/2025 09:10:50] code 400, message Bad request version ('øÕ¥×Ù«\x9fµ7\\Òu_5\x16,öôÙ`\x82\x9d+\x00*ªª\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0905 09:10:50.816197 139914985330240 _internal.py:97] 118.235.4.167 - - [05/Sep/2025 09:10:50] code 400, message Bad request version ("µ'°Ì\x00***\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À")
+E0905 09:10:50.840873 139914985330240 _internal.py:97] 59.10.172.240 - - [05/Sep/2025 09:10:50] code 400, message Bad request version ('óy\x87v¶Ð_©¤ïÛ\x9f8ß\x9aµ\x07¼\\`}Aì§;å\x86¬Kì\x87\x00*zz\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0905 09:10:50.904318 139914985330240 _internal.py:97] 118.235.4.167 - - [05/Sep/2025 09:10:50] code 400, message Bad request version ('7®\x83Ï³')
+E0905 09:10:50.928145 139914985330240 _internal.py:97] 59.10.172.240 - - [05/Sep/2025 09:10:50] code 400, message Bad request version ('/ªë\x92ÃÖ\x1aí¹Þ!\x83*ûµVÄ1\x1b¿÷®»v&Wí¢\x8bÁzÀ\x00*::\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0905 09:10:51.073431 139914985330240 _internal.py:97] 118.235.4.167 - - [05/Sep/2025 09:10:51] code 400, message Bad request version ('}wÌ\x00*ªª\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0905 09:10:51.097103 139914985330240 _internal.py:97] 59.10.172.240 - - [05/Sep/2025 09:10:51] code 400, message Bad request version ('\x95Ï^\x0fá\x0f;ÊãÝB\x00\x00*zz\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0905 09:10:51.153577 139914985330240 _internal.py:97] 118.235.4.167 - - [05/Sep/2025 09:10:51] code 400, message Bad HTTP/0.9 request type ("\x16\x03\x01\x02\x00\x01\x00\x01ü\x03\x03¬Y]Cäuát\\<7å\x980Ý¶CAñ\x87d%C!À\x91\x99'e¨\x1bÜ")
+E0905 15:01:36.726530 139915622848064 _internal.py:97] 59.10.172.240 - - [05/Sep/2025 15:01:36] code 400, message Bad request version ('_<rK\x83l')
+E0905 15:01:36.752220 139915622848064 _internal.py:97] 59.10.172.240 - - [05/Sep/2025 15:01:36] code 400, message Bad HTTP/0.9 request type ('\x16\x03\x01\x02\x00\x01\x00\x01ü\x03\x03Æ"¬\x88¼#`ê\x9c\x9dÓb¯')
+E0905 15:01:36.766697 139915622848064 _internal.py:97] 59.10.172.240 - - [05/Sep/2025 15:01:36] code 400, message Bad request version ('d±§)\x9c\x94\x19¶ÙÉ\x8dPTs¹Æâ\x1a+Þ9\x06À\x06HkÓ§ÀÎZØ\x00*êê\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0905 15:01:36.782571 139915622848064 _internal.py:97] 59.10.172.240 - - [05/Sep/2025 15:01:36] code 400, message Bad HTTP/0.9 request type ('\x16\x03\x01\x02\x00\x01\x00\x01ü\x03\x03hi#÷¢k@(¼ó;Ýg®')
+E0906 04:17:41.762228 139915622848064 _internal.py:97] 118.235.5.110 - - [06/Sep/2025 04:17:41] code 400, message Bad request version ('-Ø\x94p-gäÿ@##téE[N<¥ä)Îó(%\x00*ªª\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0906 04:17:41.826953 139915622848064 _internal.py:97] 118.235.5.110 - - [06/Sep/2025 04:17:41] code 400, message Bad request version ('ý\x84Ý97Ô\x95E\x9fy4^\x9e\x16\x81aêr\x00*::\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0906 04:17:41.881640 139915622848064 _internal.py:97] 118.235.5.110 - - [06/Sep/2025 04:17:41] code 400, message Bad request version ('áÒ\x0f\x9ch\x17BBt\x00***\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0906 04:17:41.931666 139915622848064 _internal.py:97] 118.235.5.110 - - [06/Sep/2025 04:17:41] code 400, message Bad request syntax ('\x16\x03\x01\x02\x00\x01\x00\x01ü\x03\x03MÚáM(ÛÕ8lÊ')
+E0906 06:47:24.438802 139915002115648 _internal.py:97] 59.10.172.240 - - [06/Sep/2025 06:47:24] code 400, message Bad request version ('ªnÔ,¨AV©0ÙN-ñ\x10ÛòC*·C\x92özñÒ9e¼\x7frpÑ\x00*\x8a\x8a\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0906 06:47:24.483489 139915002115648 _internal.py:97] 59.10.172.240 - - [06/Sep/2025 06:47:24] code 400, message Bad HTTP/0.9 request type ('\x16\x03\x01\x02\x00\x01\x00\x01ü\x03\x03tZÔ«ðIÕ\x9e\x98ôàZÙÏÝë')
+E0906 06:47:24.498802 139915002115648 _internal.py:97] 59.10.172.240 - - [06/Sep/2025 06:47:24] code 400, message Bad request version ('¬÷¸Â.{ï\x97p6¿Tj\x0eã\x82·\x9a\x91\x8a×h\x14\x88Ò\x01$ÍÏP\x16Ç\x00*ÊÊ\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0906 11:43:46.202229 139915622848064 _internal.py:97] 59.10.172.240 - - [06/Sep/2025 11:43:46] code 400, message Bad HTTP/0.9 request type ('\x16\x03\x01\x02\x00\x01\x00\x01ü\x03\x03¶cû.GÀ(Y\x8c=gtù\x07\x1ap¹¦\x04ï¹¤O\x99C§ÔÂÿv\x07ø')
+E0906 11:43:46.221465 139915622848064 _internal.py:97] 59.10.172.240 - - [06/Sep/2025 11:43:46] code 400, message Bad request version ('KMUX\x95\x90¹ÂÛ\x1b\x08ü\x86ÃÅÃ3\x83§µà\x00***\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0906 11:43:46.237664 139915622848064 _internal.py:97] 59.10.172.240 - - [06/Sep/2025 11:43:46] code 400, message Bad request version ('J¢\x91\x86\x00*úú\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0906 11:43:46.253771 139915622848064 _internal.py:97] 59.10.172.240 - - [06/Sep/2025 11:43:46] code 400, message Bad request version ('ÅÛ¦8\\S,O')
+E0907 01:44:43.062169 139914985330240 _internal.py:97] 118.235.4.16 - - [07/Sep/2025 01:44:43] code 400, message Bad request version ('æbþ¿\x06ÔS\x14\x90(\x84e;\x87')
+E0907 01:44:43.126120 139914985330240 _internal.py:97] 118.235.4.16 - - [07/Sep/2025 01:44:43] code 400, message Bad request version ('ß\\r\x84\x964Ì\x02\x90lº\x12âþî\x02\x83öCvÎ\x8a\x9e8(<\x13@#F$\x84\x00*\x1a\x1a\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0907 01:44:43.191277 139914985330240 _internal.py:97] 118.235.4.16 - - [07/Sep/2025 01:44:43] code 400, message Bad request version ('\x94\xadIE`N\x95ÀÎ|ïÃÌz_\x0e\x96\x99ovoç\x00*\x8a\x8a\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0907 01:44:43.250973 139914985330240 _internal.py:97] 118.235.4.16 - - [07/Sep/2025 01:44:43] code 400, message Bad request version ('\x00*\x9a\x9a\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0907 08:11:50.978799 139915002115648 _internal.py:97] 118.235.5.124 - - [07/Sep/2025 08:11:50] code 400, message Bad request version ('\x00*\x8a\x8a\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0907 08:11:51.043613 139915002115648 _internal.py:97] 118.235.5.124 - - [07/Sep/2025 08:11:51] code 400, message Bad request version ('±J\x9aÃk\x86\x94àAÊ]\x99\x9a\x9b±lªIë\x98=zÓ\x00*\x1a\x1a\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0907 08:11:51.108628 139915002115648 _internal.py:97] 118.235.5.124 - - [07/Sep/2025 08:11:51] code 400, message Bad request version ('\x08sh\x14JÄ\x8c\x84]±_I\x00*\x9a\x9a\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0907 08:11:51.163227 139915002115648 _internal.py:97] 118.235.5.124 - - [07/Sep/2025 08:11:51] code 400, message Bad request version ('\x88\x8cçä\x00*\x8a\x8a\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0908 00:30:25.441280 139914993722944 _internal.py:97] 110.70.54.212 - - [08/Sep/2025 00:30:25] code 400, message Bad request version (':\x0eÐd3ÊFP/?XEa\\´ä}\x83ÿ')
+E0908 00:30:25.534769 139914993722944 _internal.py:97] 110.70.54.212 - - [08/Sep/2025 00:30:25] code 400, message Bad request version ('\x8cÛ\x9e\x1aísz[Ûß\x00*êê\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0908 00:30:25.631927 139914993722944 _internal.py:97] 110.70.54.212 - - [08/Sep/2025 00:30:25] code 400, message Bad request version ('_ÉRös\x05?ÃãXc¤Wf\xad¼B\x01ÁBK«\xad\x00*êê\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0908 00:30:25.741541 139914993722944 _internal.py:97] 110.70.54.212 - - [08/Sep/2025 00:30:25] code 400, message Bad request version ('\x00*ªª\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0908 10:34:35.683152 139915622848064 _internal.py:97] 194.0.234.12 - - [08/Sep/2025 10:34:35] code 400, message Bad HTTP/0.9 request type ('\x03\x00\x00/*à\x00\x00\x00\x00\x00Cookie:')
+E0908 10:34:35.892635 139915622848064 _internal.py:97] 194.0.234.12 - - [08/Sep/2025 10:34:35] code 400, message Bad HTTP/0.9 request type ('\x03\x00\x00/*à\x00\x00\x00\x00\x00Cookie:')
+E0908 10:34:36.310991 139915622848064 _internal.py:97] 194.0.234.12 - - [08/Sep/2025 10:34:36] code 400, message Bad HTTP/0.9 request type ('\x03\x00\x00/*à\x00\x00\x00\x00\x00Cookie:')
+E0908 10:34:37.076218 139915622848064 _internal.py:97] 194.0.234.12 - - [08/Sep/2025 10:34:37] code 400, message Bad HTTP/0.9 request type ('\x03\x00\x00/*à\x00\x00\x00\x00\x00Cookie:')
+E0908 10:34:38.652200 139915622848064 _internal.py:97] 194.0.234.12 - - [08/Sep/2025 10:34:38] code 400, message Bad HTTP/0.9 request type ('\x03\x00\x00/*à\x00\x00\x00\x00\x00Cookie:')
+W0908 13:33:50.008027 139914993722944 application.py:559] path /apple-touch-icon-precomposed.png not found, sending 404
+W0908 13:33:50.016278 139915002115648 application.py:559] path /apple-touch-icon.png not found, sending 404
+W0908 13:33:50.650254 139914985330240 application.py:559] path /apple-touch-icon-120x120-precomposed.png not found, sending 404
+W0908 13:33:50.974191 139914985330240 application.py:559] path /apple-touch-icon-120x120.png not found, sending 404
+W0908 13:33:51.304327 139914985330240 application.py:559] path /apple-touch-icon-precomposed.png not found, sending 404
+W0908 13:33:51.364570 139914985330240 application.py:559] path /apple-touch-icon.png not found, sending 404
+W0908 13:33:51.455720 139914985330240 application.py:559] path /apple-touch-icon-120x120-precomposed.png not found, sending 404
+W0908 13:33:51.489526 139914985330240 application.py:559] path /apple-touch-icon-120x120.png not found, sending 404
+W0908 13:33:51.568636 139914985330240 application.py:559] path /apple-touch-icon-precomposed.png not found, sending 404
+W0908 13:33:51.626400 139914985330240 application.py:559] path /apple-touch-icon.png not found, sending 404
+E0908 19:53:22.662542 139915622848064 _internal.py:97] 194.0.234.12 - - [08/Sep/2025 19:53:22] code 400, message Bad HTTP/0.9 request type ('\x03\x00\x00/*à\x00\x00\x00\x00\x00Cookie:')
+E0908 19:53:22.824116 139915622848064 _internal.py:97] 194.0.234.12 - - [08/Sep/2025 19:53:22] code 400, message Bad HTTP/0.9 request type ('\x03\x00\x00/*à\x00\x00\x00\x00\x00Cookie:')
+E0908 19:53:23.204396 139915622848064 _internal.py:97] 194.0.234.12 - - [08/Sep/2025 19:53:23] code 400, message Bad HTTP/0.9 request type ('\x03\x00\x00/*à\x00\x00\x00\x00\x00Cookie:')
+E0908 19:53:23.982542 139915622848064 _internal.py:97] 194.0.234.12 - - [08/Sep/2025 19:53:23] code 400, message Bad HTTP/0.9 request type ('\x03\x00\x00/*à\x00\x00\x00\x00\x00Cookie:')
+E0908 19:53:25.519469 139915622848064 _internal.py:97] 194.0.234.12 - - [08/Sep/2025 19:53:25] code 400, message Bad HTTP/0.9 request type ('\x03\x00\x00/*à\x00\x00\x00\x00\x00Cookie:')
+E0908 19:53:48.741871 139915622848064 _internal.py:97] 194.0.234.12 - - [08/Sep/2025 19:53:48] code 400, message Bad HTTP/0.9 request type ('\x03\x00\x00/*à\x00\x00\x00\x00\x00Cookie:')
+E0908 19:53:48.957302 139915622848064 _internal.py:97] 194.0.234.12 - - [08/Sep/2025 19:53:48] code 400, message Bad HTTP/0.9 request type ('\x03\x00\x00/*à\x00\x00\x00\x00\x00Cookie:')
+E0908 19:53:49.396795 139915622848064 _internal.py:97] 194.0.234.12 - - [08/Sep/2025 19:53:49] code 400, message Bad HTTP/0.9 request type ('\x03\x00\x00/*à\x00\x00\x00\x00\x00Cookie:')
+E0908 19:53:50.290470 139915622848064 _internal.py:97] 194.0.234.12 - - [08/Sep/2025 19:53:50] code 400, message Bad HTTP/0.9 request type ('\x03\x00\x00/*à\x00\x00\x00\x00\x00Cookie:')
+E0908 19:53:52.008140 139915622848064 _internal.py:97] 194.0.234.12 - - [08/Sep/2025 19:53:52] code 400, message Bad HTTP/0.9 request type ('\x03\x00\x00/*à\x00\x00\x00\x00\x00Cookie:')
+E0910 09:59:03.135951 139915622848064 _internal.py:97] 118.235.5.39 - - [10/Sep/2025 09:59:03] code 400, message Bad request version ('o\x83²õÄHå&ðãÄW,[½g\x7fiK')
+E0910 09:59:03.245442 139915622848064 _internal.py:97] 118.235.5.39 - - [10/Sep/2025 09:59:03] code 400, message Bad request version ('ãîÐ\x98¨]G:BÃ\x07\x98À¶\x10bÉ¾é\x19S|\x9c#îF\x02\x8cø\x18Õ?\x00*ZZ\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0910 09:59:03.345417 139915622848064 _internal.py:97] 118.235.5.39 - - [10/Sep/2025 09:59:03] code 400, message Bad request version ('Ó?\x96\x1b"6s\x19ì092\x00*\x8a\x8a\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+E0910 09:59:03.454161 139915622848064 _internal.py:97] 118.235.5.39 - - [10/Sep/2025 09:59:03] code 400, message Bad request version ('\x00û¾\x83oÆÔ\x08\x9bs÷\x8bÙó[\x9a=n´@\x00*\x9a\x9a\x13\x01\x13\x02\x13\x03À,À+Ì©À0À/Ì¨À')
+W0910 09:59:06.361993 139914993722944 application.py:559] path /apple-touch-icon-precomposed.png not found, sending 404
+W0910 09:59:06.518002 139915622848064 application.py:559] path /apple-touch-icon.png not found, sending 404

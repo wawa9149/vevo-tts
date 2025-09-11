@@ -45,7 +45,7 @@
             "vocos_dim": 384,
             "vocos_intermediate_dim": 2048,
             "vocos_num_layers": 12,
-            "pretrained_path": "[Please fill out your pretrained model path]/model.safetensors"
+            "pretrained_path": "ckpts/vevo/fvq8192/checkpoint/epoch-0035_step-0182000_loss-13.510459/pytorch_model.bin"
         }
     },
     "log_dir": "ckpts/vevo",

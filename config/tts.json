@@ -8,10 +8,10 @@
   ],
   "task_type": "tts",
   "preprocess": {
-    "language": "en-us", //  espeak supports 100 languages https://github.com/espeak-ng/espeak-ng/blob/master/docs/languages.md
+    "language": "ko", //  g2pK supports Korean language
     // linguistic features
     "extract_phone": true,
-    "phone_extractor": "espeak", // "espeak, pypinyin, pypinyin_initials_finals, lexicon (only for language=en-us right now)"
+    "phone_extractor": "korean_ipa", // "espeak, pypinyin, pypinyin_initials_finals, lexicon, g2pk, korean_ipa"
     "lexicon_path": "./text/lexicon/librispeech-lexicon.txt",
     // Directory names of processed data or extracted features
     "phone_dir": "phones",
@@ -19,7 +19,7 @@
     "add_blank": true
   },
   "model": {
-      "text_token_num": 512,
+      "text_token_num": 512
   }
 
 }

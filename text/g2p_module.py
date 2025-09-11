@@ -21,6 +21,23 @@ try:
 except Exception:
     pass
 
+# Import Korean backends
+try:
+    from .g2pk_backend import G2pKBackend
+except ImportError:
+    G2pKBackend = None
+
+try:
+    from .korean_ipa_backend import KoreanIPABackend
+except ImportError:
+    KoreanIPABackend = None
+
+# Add Hybrid Korean backend (g2pK -> hangul_to_ipa)
+try:
+    from .hybrid_korean_backend import HybridKoreanBackend
+except ImportError:
+    HybridKoreanBackend = None
+
 
 # This code is modified from
 # https://github.com/lifeiteng/vall-e/blob/9c69096d603ce13174fb5cb025f185e2e9b36ac7/valle/data/tokenizer.py
@@ -154,6 +171,51 @@ class G2PModule:
             return PypinyinBackend(
                 backend=backend,
                 punctuation_marks=punctuation_marks + self.separator.word,
+            )
+        elif backend == "g2pk":
+            if G2pKBackend is None:
+                raise ImportError("g2pK backend is not available. Please check if g2pK is properly installed.")
+            if language != "ko":
+                raise ValueError(
+                    f"{language} is not supported for g2pk. Only Korean (ko) is supported."
+                )
+            return G2pKBackend(
+                language=language,
+                punctuation_marks=punctuation_marks,
+                preserve_punctuation=preserve_punctuation,
+                with_stress=with_stress,
+                tie=tie,
+                language_switch=language_switch,
+                words_mismatch=words_mismatch,
+            )
+        elif backend == "korean_ipa":
+            if KoreanIPABackend is None:
+                raise ImportError("Korean IPA backend is not available. Please check if hangul_to_ipa is properly installed.")
+            if language != "ko":
+                raise ValueError(
+                    f"{language} is not supported for korean_ipa. Only Korean (ko) is supported."
+                )
+            return KoreanIPABackend(
+                language=language,
+                punctuation_marks=punctuation_marks,
+                preserve_punctuation=preserve_punctuation,
+                with_stress=with_stress,
+                tie=tie,
+                language_switch=language_switch,
+                words_mismatch=words_mismatch,
+            )
+        elif backend == "korean_hybrid":
+            if HybridKoreanBackend is None:
+                raise ImportError("Hybrid Korean backend is not available. Please ensure g2pK and hangul_to_ipa are installed.")
+            if language != "ko":
+                raise ValueError(
+                    f"{language} is not supported for korean_hybrid. Only Korean (ko) is supported."
+                )
+            # Hybrid backend accepts a subset of parameters
+            return HybridKoreanBackend(
+                language=language,
+                punctuation_marks=punctuation_marks,
+                preserve_punctuation=preserve_punctuation,
             )
         else:
             raise NotImplementedError(f"{backend}")

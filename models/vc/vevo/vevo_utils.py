@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import math
+import os
 import librosa
 import torch
 import torchaudio
@@ -24,13 +25,27 @@ from utils.util import load_config
 
 
 def g2p_(text, language):
-    from models.tts.maskgct.g2p.g2p_generation import g2p, chn_eng_g2p
-
-    if language in ["zh", "en"]:
-        return chn_eng_g2p(text)
+    print(f"DEBUG g2p_: text='{text}', language='{language}'")
+    
+    if language == "ko":
+        # 한국어는 새로 구현한 G2P 사용
+        from models.tts.maskgct.g2p.utils.g2p import phonemizer_g2p
+        result = phonemizer_g2p(text, language)
+        print(f"DEBUG g2p_ KO result: {result}")
+        return result
     else:
-        return g2p(text, sentence=None, language=language)
-
+        # 다른 언어는 원래 MaskGCT G2P 사용
+        try:
+            from models.tts.maskgct.g2p.g2p_generation import g2p, chn_eng_g2p
+            if language in ["zh", "en"]:
+                result = chn_eng_g2p(text)
+            else:
+                result = g2p(text, sentence=None, language=language)
+            print(f"DEBUG g2p_ other result: {result}")
+            return result
+        except ImportError:
+            print(f"Warning: G2P not available for language {language}, using text as phones")
+            return [text, list(text)]
 
 def transcribe_audio(audio_path, model=None):
     if model is None:
@@ -123,7 +138,25 @@ def build_vocoder_model(cfg, device):
 
 def load_checkpoint(build_model_func, cfg, ckpt_path, device):
     model = build_model_func(cfg, device)
-    accelerate.load_checkpoint_and_dispatch(model, ckpt_path)
+    # Support both directory (accelerate) and single-file checkpoints
+    if os.path.isdir(ckpt_path):
+        accelerate.load_checkpoint_and_dispatch(model, ckpt_path)
+    elif isinstance(ckpt_path, str) and ckpt_path.endswith(".safetensors"):
+        safetensors.torch.load_model(model, ckpt_path)
+    elif isinstance(ckpt_path, str) and ckpt_path.endswith(".bin"):
+        state = torch.load(ckpt_path, map_location="cpu")
+        if isinstance(state, dict) and "state_dict" in state:
+            model.load_state_dict(state["state_dict"])
+        elif isinstance(state, dict) and "model" in state:
+            inner = state["model"]
+            if isinstance(inner, dict) and "repcodec" in inner:
+                model.load_state_dict(inner["repcodec"])
+            else:
+                model.load_state_dict(inner)
+        else:
+            model.load_state_dict(state)
+    else:
+        raise ValueError(f"Unrecognized checkpoint path: {ckpt_path}")
     return model
 
 
@@ -164,9 +197,38 @@ def save_audio(
 
     rms = torch.sqrt(torch.mean(waveform**2))
     current_db = 20 * torch.log10(rms + 1e-9)
+    try:
+        peak = torch.max(torch.abs(waveform)).item()
+        print(f"DEBUG save_audio before: peak={peak:.6f}, rms={rms.item():.6f}, db={current_db.item():.2f}")
+    except Exception:
+        pass
 
     gain = target_db - current_db
     normalized_waveform = waveform * (10 ** (gain / 20))
+    # Peak safety limiter to avoid clipping
+    try:
+        peak_after = torch.max(torch.abs(normalized_waveform)).item()
+        if peak_after > 0.98:
+            scale = 0.98 / peak_after
+            normalized_waveform = normalized_waveform * scale
+    except Exception:
+        pass
+    # Short fade-out to reduce tail noise (~0.1s)
+    try:
+        fade_samples = int(0.1 * float(target_sample_rate))
+        T = normalized_waveform.shape[-1]
+        if T > fade_samples and fade_samples > 0:
+            ramp = torch.linspace(1.0, 0.0, steps=fade_samples, device=normalized_waveform.device)
+            normalized_waveform[:, -fade_samples:] *= ramp
+    except Exception:
+        pass
+
+    try:
+        nrms = torch.sqrt(torch.mean(normalized_waveform**2)).item()
+        npeak = torch.max(torch.abs(normalized_waveform)).item()
+        print(f"DEBUG save_audio after: peak={npeak:.6f}, rms={nrms:.6f}, target_db={target_db}")
+    except Exception:
+        pass
 
     torchaudio.save(output_path, normalized_waveform, target_sample_rate)
     return output_path
@@ -221,39 +283,47 @@ class VevoInferencePipeline:
         self.hubert_feat_norm_mean = torch.tensor(stat["mean"])
         self.hubert_feat_norm_std = torch.tensor(stat["std"])
 
-        ## Content Tokenizer ##
-        if self.ar_model is not None and "input_repcodec" in self.ar_cfg.model:
-            assert self.ar_cfg.model.vc_input_token_type == "hubert_vevo_codec"
+        # ## Content Tokenizer ##
+        # if self.ar_model is not None and "input_repcodec" in self.ar_cfg.model:
+        #     assert self.ar_cfg.model.vc_input_token_type == "hubert_vevo_codec"
 
-            ckpt_path = getattr(
-                self.ar_cfg.model.input_repcodec,
-                "pretrained_path",
-                self.content_tokenizer_ckpt_path,
-            )
-            self.ar_cfg.model.input_repcodec.pretrained_path = ckpt_path
-            self.content_tokenizer = load_vevo_vqvae_checkpoint(
-                self.ar_cfg.model.input_repcodec,
-                self.device,
-            )
+        #     ckpt_path = getattr(
+        #         self.ar_cfg.model.input_repcodec,
+        #         "pretrained_path",
+        #         self.content_tokenizer_ckpt_path,
+        #     )
+        #     self.ar_cfg.model.input_repcodec.pretrained_path = ckpt_path
+        #     self.content_tokenizer = load_vevo_vqvae_checkpoint(
+        #         self.ar_cfg.model.input_repcodec,
+        #         self.device,
+        #     )
 
-            print(
-                "#Params of Content Tokenizer: {}".format(
-                    count_parameters(self.content_tokenizer)
-                )
-            )
+        #     print(
+        #         "#Params of Content Tokenizer: {}".format(
+        #             count_parameters(self.content_tokenizer)
+        #         )
+        #     )
 
         ## Content-Style Tokenizer ##
-        ckpt_path = getattr(
-            self.fmt_cfg.model.repcodec,
-            "pretrained_path",
-            self.content_style_tokenizer_ckpt_path,
-        )
-        self.content_style_tokenizer = load_checkpoint(
-            build_vqvae_model,
-            self.fmt_cfg.model.repcodec,
-            ckpt_path,
-            self.device,
-        )
+        cond_type = getattr(self.fmt_cfg.model, "cond_type", "hubert_codec")
+        if cond_type == "hubert_vevo_codec":
+            # Use VevoRepCodec (expects config_path + pretrained_path in repcodec cfg)
+            self.content_style_tokenizer = load_vevo_vqvae_checkpoint(
+                self.fmt_cfg.model.repcodec,
+                self.device,
+            )
+        else:
+            ckpt_path = getattr(
+                self.fmt_cfg.model.repcodec,
+                "pretrained_path",
+                self.content_style_tokenizer_ckpt_path,
+            )
+            self.content_style_tokenizer = load_checkpoint(
+                build_vqvae_model,
+                self.fmt_cfg.model.repcodec,
+                ckpt_path,
+                self.device,
+            )
         print(
             "#Params of Content-Style Tokenizer: {}".format(
                 count_parameters(self.content_style_tokenizer)
@@ -267,6 +337,15 @@ class VevoInferencePipeline:
         mel_feature = (mel_feature - self.vocoder_cfg.preprocess.mel_mean) / math.sqrt(
             self.vocoder_cfg.preprocess.mel_var
         )
+        # DEBUG mel stats
+        try:
+            mean_val = mel_feature.mean().item()
+            std_val = mel_feature.std().item()
+            min_val = mel_feature.min().item()
+            max_val = mel_feature.max().item()
+            print(f"DEBUG mel_feature: mean={mean_val:.4f}, std={std_val:.4f}, min={min_val:.4f}, max={max_val:.4f}")
+        except Exception:
+            pass
         return mel_feature
 
     @torch.no_grad()
@@ -413,6 +492,16 @@ class VevoInferencePipeline:
         use_global_guided_inference=False,
         flow_matching_steps=32,
         display_audio=False,
+        ar_temperature=0.7,
+        ar_top_k=0,
+        ar_top_p=1.0,
+        ar_repeat_penalty=1.0,
+        ar_min_new_tokens=50,
+        ar_max_length=2000,
+        ar_do_sample=True,
+        no_repeat_ngram_size=0,
+        ar_prompt_output_tokens=0,
+        disable_style_text_concat=False,
     ):
         assert self.ar_model is not None
 
@@ -429,6 +518,16 @@ class VevoInferencePipeline:
             if display_audio:
                 print("-" * 20)
                 print("Source Text: [{}]".format(src_text))
+
+            # Compute adaptive min_new_tokens based on source phones length
+            try:
+                src_tokens = g2p_(src_text, src_text_language)[1]
+                # 음절 누락 방지를 위해 충분한 길이 보장: 6x -> 8x, 최소값 50 -> 80
+                desired_min_tokens = max(80, int(len(src_tokens) * 8))
+                ar_min_new_tokens = max(ar_min_new_tokens, desired_min_tokens)
+                print(f"DEBUG AR target min_new_tokens: {ar_min_new_tokens} (src_len={len(src_tokens)})")
+            except Exception:
+                pass
 
         else:
             # VC
@@ -472,14 +571,15 @@ class VevoInferencePipeline:
                 print("Src text input_ids:", ar_input_ids.shape)
 
             if not use_global_guided_inference:
-                assert style_ref_wav_text is not None
-                style_ref_input_ids = g2p_(
-                    style_ref_wav_text, style_ref_wav_text_language
-                )[1]
-                style_ref_input_ids = torch.tensor(
-                    [style_ref_input_ids], dtype=torch.long
-                ).to(self.device)
-                ar_input_ids = torch.cat([style_ref_input_ids, ar_input_ids], dim=1)
+                if not disable_style_text_concat:
+                    assert style_ref_wav_text is not None
+                    style_ref_input_ids = g2p_(
+                        style_ref_wav_text, style_ref_wav_text_language
+                    )[1]
+                    style_ref_input_ids = torch.tensor(
+                        [style_ref_input_ids], dtype=torch.long
+                    ).to(self.device)
+                    ar_input_ids = torch.cat([style_ref_input_ids, ar_input_ids], dim=1)
 
                 if display_audio:
                     print("AR input_ids:", ar_input_ids.shape)
@@ -531,7 +631,10 @@ class VevoInferencePipeline:
                 self.content_style_tokenizer,
                 style_ref_speech16k,
                 duration_reduction=False,
+                token_type=getattr(self.fmt_cfg.model, "cond_type", "hubert_codec"),
             )
+            if isinstance(ar_prompt_output_tokens, int) and ar_prompt_output_tokens > 0:
+                prompt_output_ids = prompt_output_ids[:, :ar_prompt_output_tokens]
             if display_audio:
                 print("Prompt output_ids:", prompt_output_ids.shape)
 
@@ -540,28 +643,71 @@ class VevoInferencePipeline:
             input_ids=ar_input_ids,
             prompt_mels=self.extract_prompt_mel_feature(style_ref_speech16k),
             prompt_output_ids=prompt_output_ids,
+            temperature=ar_temperature,
+            top_k=ar_top_k,
+            top_p=ar_top_p,
+            repeat_penalty=ar_repeat_penalty,
+            min_new_tokens=ar_min_new_tokens,
+            max_length=ar_max_length,
+            do_sample=ar_do_sample,
+            no_repeat_ngram_size=no_repeat_ngram_size,
         )
+        # DEBUG: check AR predicted code validity
+        try:
+            codebook_size = getattr(self.fmt_cfg.model.repcodec, "codebook_size", 8192)
+            min_code = predicted_hubert_codecs.min().item()
+            max_code = predicted_hubert_codecs.max().item()
+            num_oov_low = (predicted_hubert_codecs < 0).sum().item()
+            num_oov_high = (predicted_hubert_codecs >= codebook_size).sum().item()
+            total_codes = predicted_hubert_codecs.numel()
+            length_codes = predicted_hubert_codecs.shape[1]
+            print(
+                f"DEBUG AR codes: min={min_code}, max={max_code}, oov_low={num_oov_low}, oov_high={num_oov_high}, total={total_codes}, length={length_codes}"
+            )
+        except Exception:
+            pass
 
         ## Diffusion ##
         timbre_ref_hubert_codecs, _ = self.extract_hubert_codec(
-            self.content_style_tokenizer, timbre_ref_speech16k, duration_reduction=False
+            self.content_style_tokenizer,
+            timbre_ref_speech16k,
+            duration_reduction=False,
+            token_type=getattr(self.fmt_cfg.model, "cond_type", "hubert_codec"),
         )
         diffusion_input_codecs = torch.cat(
             [timbre_ref_hubert_codecs, predicted_hubert_codecs], dim=1
         )
 
         # [1, T, D]
+        print(f"Using flow_matching_steps: {flow_matching_steps}")  # 실제 사용 값 확인
         predict_mel_feat = self.fmt_model.reverse_diffusion(
             cond=self.fmt_model.cond_emb(diffusion_input_codecs),
             prompt=self.extract_mel_feature(timbre_ref_speech24k),
             n_timesteps=flow_matching_steps,
         )
+        # DEBUG predicted mel stats
+        try:
+            p_mean = predict_mel_feat.mean().item()
+            p_std = predict_mel_feat.std().item()
+            p_min = predict_mel_feat.min().item()
+            p_max = predict_mel_feat.max().item()
+            print(f"DEBUG predict_mel_feat: mean={p_mean:.4f}, std={p_std:.4f}, min={p_min:.4f}, max={p_max:.4f}")
+        except Exception:
+            pass
 
         ## Vocoder and Display ##
         # [1, 1, T] -> [1, T]
         synthesized_audio = (
             self.vocoder_model(predict_mel_feat.transpose(1, 2)).detach().cpu()
         )[0]
+        # DEBUG: audio stats
+        try:
+            _peak = torch.max(torch.abs(synthesized_audio)).item()
+            _rms = torch.sqrt(torch.mean(synthesized_audio**2)).item()
+            _has_nan = torch.isnan(synthesized_audio).any().item()
+            print(f"DEBUG synthesized_audio: peak={_peak:.6f}, rms={_rms:.6f}, has_nan={_has_nan}")
+        except Exception:
+            pass
         if display_audio:
             # [T]
             audio = synthesized_audio.numpy()[0]
@@ -595,10 +741,12 @@ class VevoInferencePipeline:
 
         ## Diffusion ##
         src_hubert_codecs, _ = self.extract_hubert_codec(
-            self.content_style_tokenizer, src_speech16k, duration_reduction=False
+            self.content_style_tokenizer, src_speech16k, duration_reduction=False,
+            token_type=getattr(self.fmt_cfg.model, "cond_type", "hubert_codec"),
         )
         timbre_ref_hubert_codecs, _ = self.extract_hubert_codec(
-            self.content_style_tokenizer, timbre_ref_speech16k, duration_reduction=False
+            self.content_style_tokenizer, timbre_ref_speech16k, duration_reduction=False,
+            token_type=getattr(self.fmt_cfg.model, "cond_type", "hubert_codec"),
         )
         diffusion_input_codecs = torch.cat(
             [timbre_ref_hubert_codecs, src_hubert_codecs], dim=1

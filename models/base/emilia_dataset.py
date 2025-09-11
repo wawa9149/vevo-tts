@@ -33,8 +33,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-MNT_PATH = "/data/dataset-vevo/dataset-ko"
-CACHE_PATH = "/data/dataset-vevo/dataset-ko-cache"
+MNT_PATH = "/app/data/dataset-vevo/dataset-ko"
+CACHE_PATH = "/app/data/dataset-vevo/dataset-ko-cache"
 
 
 class EmiliaDataset(torch.utils.data.Dataset):

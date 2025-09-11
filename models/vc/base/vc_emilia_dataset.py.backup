@@ -8,10 +8,6 @@ import numpy as np
 import librosa
 import torch
 from torch.nn.utils.rnn import pad_sequence
-import os
-
-from text.text_token_collation import TextTokenCollator
-from text.symbol_table import SymbolTable
 
 from models.base.emilia_dataset import EmiliaDataset, WarningFilter
 
@@ -42,39 +38,6 @@ class VCEmiliaDataset(EmiliaDataset):
         )
         self.load_chromagram = getattr(self.cfg.preprocess, "load_chromagram", False)
 
-        # Prepare Korean phone-id collator from symbols_dict (no BOS/EOS)
-        self.pad_phone_id = 1023  # must not collide with real tokens
-        self.ko_token_collator = None
-        try:
-            symbols_dict_file = getattr(self.cfg.preprocess, "symbols_dict_file", None)
-            if symbols_dict_file is None:
-                processed_dir = getattr(self.cfg.preprocess, "processed_dir", None)
-                symbols_name = getattr(self.cfg.preprocess, "symbols_dict", None)
-                if processed_dir is not None and symbols_name is not None:
-                    candidate = os.path.join(processed_dir, symbols_name)
-                    if os.path.exists(candidate):
-                        symbols_dict_file = candidate
-
-            if symbols_dict_file is not None and os.path.exists(symbols_dict_file):
-                base_tokens = SymbolTable.from_file(symbols_dict_file).symbols
-                # Build a collator without BOS/EOS so sequences match VC expectations
-                self.ko_token_collator = TextTokenCollator(
-                    base_tokens, add_bos=False, add_eos=False
-                )
-                # Safety: ensure vocab size fits embedding/pad convention if used downstream
-                if len(self.ko_token_collator.idx2token) >= self.pad_phone_id:
-                    logger.warning(
-                        f"Phone vocab size {len(self.ko_token_collator.idx2token)} exceeds or equals pad id {self.pad_phone_id}.\n"
-                        "Please shrink vocab or increase embedding size and update padding assumptions (1024/1023)."
-                    )
-            else:
-                if self.load_phone:
-                    logger.warning(
-                        "symbols_dict file not found; Korean phone-id mapping will not be available."
-                    )
-        except Exception as e:
-            logger.warning(f"Failed to initialize Korean phone-id collator: {e}")
-
         if self.load_semantic_features:
             from transformers import SeamlessM4TFeatureExtractor
 
@@ -85,10 +48,15 @@ class VCEmiliaDataset(EmiliaDataset):
     def g2p(self, text, language):
         # Use our custom Korean G2P backends
         if language == "ko":
-            # Route to MaskGCT-compatible KO G2P → IPA → ID mapper
-            from models.tts.maskgct.g2p.utils.g2p import phonemizer_g2p
-            ipa_str, token_ids = phonemizer_g2p(text, language)
-            return [ipa_str, token_ids]
+            from text.g2p_module import G2PModule
+            
+            # Use korean_hybrid backend for Korean text
+            g2p_module = G2PModule(backend="korean_hybrid", language="ko")
+            phones = g2p_module.g2p_conversion(text)
+            
+            # Return format compatible with original function
+            # [text, phone_sequence]
+            return [text, phones]
         else:
             # Fallback for other languages
             try:
@@ -197,11 +165,36 @@ class VCEmiliaDataset(EmiliaDataset):
 
             ## Load phone using G2P ##
             try:
-                phone_id = (
+                phone_result = (
                     self.g2p(meta["text"], meta["language"])[1]
                     if self.cache_type == "path"
                     else meta["phone_id"]
                 )
+                
+                # Debug: Print phone_result type and content
+                print(f"DEBUG: phone_result type: {type(phone_result)}")
+                print(f"DEBUG: phone_result content: {phone_result}")
+                print(f"DEBUG: phone_result length: {len(phone_result) if hasattr(phone_result, '__len__') else 'no length'}")
+                
+                # Ensure phone_id is a list of strings, not mixed types
+                if isinstance(phone_result, list):
+                    phone_id = phone_result
+                    print(f"DEBUG: phone_id is list, length: {len(phone_id)}")
+                elif isinstance(phone_result, str):
+                    # Split string by phone separator (usually '|') and filter empty strings
+                    phone_id = [p for p in phone_result.split('|') if p.strip()]
+                    if not phone_id:  # If splitting failed, use character-level fallback
+                        phone_id = list(phone_result)
+                    print(f"DEBUG: phone_id after string processing, length: {len(phone_id)}")
+                else:
+                    phone_id = [str(phone_result)]
+                    print(f"DEBUG: phone_id after fallback, length: {len(phone_id)}")
+                
+                # Final debug check
+                print(f"DEBUG: Final phone_id type: {type(phone_id)}")
+                print(f"DEBUG: Final phone_id content: {phone_id}")
+                print(f"DEBUG: Final phone_id length: {len(phone_id)}")
+                
                 if len(phone_id) > 512:
                     raise Exception("too long phone seq")
             except Exception as e:
@@ -219,6 +212,7 @@ class VCEmiliaDataset(EmiliaDataset):
                 random_index = (idx + 1) % len(self.num_frame_indices) if len(candidates) == 0 else np.random.choice(candidates)
                 del position
                 return self.__getitem__(random_index)
+
             phone_id = torch.tensor(np.array(phone_id), dtype=torch.long)
             phone_mask = np.ones(len(phone_id))
 

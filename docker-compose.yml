@@ -1,0 +1,20 @@
+services:
+   yh-trainer-experiment:
+    image: yh-trainer:latest
+    container_name:  yh-trainer-experiment
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=4,5
+      - LC_ALL=C.UTF-8
+    build:
+      context: .
+      dockerfile: Dockerfile
+    stdin_open: true
+    tty: true
+    volumes:
+      - /mnt/nvme:/app/data
+      - /home/ubuntu/workspace/yhlee/vevo_g2pk_experiment:/app/vevo
+      - /etc/localtime:/etc/localtime:ro
+    shm_size: '64g'
+    cap_add:
+      - SYS_ADMIN

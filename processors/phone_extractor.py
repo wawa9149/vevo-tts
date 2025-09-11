@@ -39,6 +39,8 @@ class phoneExtractor:
             "espeak",
             "pypinyin",
             "pypinyin_initials_finals",
+            "g2pk",
+            "korean_ipa",
         ]:
             self.g2p_module = G2PModule(
                 backend=cfg.preprocess.phone_extractor, language=cfg.preprocess.language
@@ -66,6 +68,8 @@ class phoneExtractor:
             "espeak",
             "pypinyin",
             "pypinyin_initials_finals",
+            "g2pk",
+            "korean_ipa",
         ]:
             text = text.replace("”", '"').replace("“", '"')
             phone = self.g2p_module.g2p_conversion(text=text)

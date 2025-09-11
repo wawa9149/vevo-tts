@@ -9,17 +9,18 @@
     },
     "preprocess": {
         "extract_phone": true,
-        "phone_extractor": "espeak", // "espeak, pypinyin, pypinyin_initials_finals, lexicon (only for language=en-us right now)"
+        "phone_extractor": "g2pk", // "espeak, pypinyin, pypinyin_initials_finals, lexicon, g2pk"
+        "language": "ko",
         "extract_acoustic_token": true,
         "use_phone": true,
         "use_acoustic_token": true,
         "processed_dir": "Amphion/data/",
         "sample_rate": 24000, // "Audio sampling rate." 
         "codec_hop_size": 320, // "Audio codec hop size." 
-        "valid_file": "test.json", 
+        "valid_file": "test.json"
     },
     "model": {
-        "prefix_mode": 1, // "The mode for how to prefix VALL-E NAR Decoder, 0: no prefix, 1: 0 to random, 2: random to random, 4: chunk of pre or post utterance.",
+        "prefix_mode": 1
     },
     "log_dir": "Amphion/ckpts/tts/valle",
     "train": {

@@ -246,6 +246,8 @@ class AutoregressiveTransformer(nn.Module):
         top_p=0.9,
         repeat_penalty=1.0,
         min_new_tokens=50,
+        do_sample=True,
+        no_repeat_ngram_size=0,
     ):
         """
         Generate for one sample.
@@ -304,7 +306,7 @@ class AutoregressiveTransformer(nn.Module):
 
             gen_tokens = self.model.generate(
                 inputs_embeds=llama_input_emb,
-                do_sample=True,
+                do_sample=do_sample,
                 max_length=max_length,
                 pad_token_id=self.pad_token_id,
                 eos_token_id=self.output_eos_token_id,
@@ -313,6 +315,7 @@ class AutoregressiveTransformer(nn.Module):
                 top_p=top_p,
                 repetition_penalty=repeat_penalty,
                 min_new_tokens=min_new_tokens,
+                no_repeat_ngram_size=no_repeat_ngram_size,
             )
         else:
             # When not using global style encoder, prompt_output_ids is required
@@ -323,7 +326,7 @@ class AutoregressiveTransformer(nn.Module):
 
             gen_tokens = self.model.generate(
                 llama_input_ids,
-                do_sample=True,
+                do_sample=do_sample,
                 max_length=max_length,
                 pad_token_id=self.pad_token_id,
                 eos_token_id=self.output_eos_token_id,
@@ -332,6 +335,7 @@ class AutoregressiveTransformer(nn.Module):
                 top_p=top_p,
                 repetition_penalty=repeat_penalty,
                 min_new_tokens=min_new_tokens,
+                no_repeat_ngram_size=no_repeat_ngram_size,
             )
 
             gen_tokens = gen_tokens[:, input_length:]

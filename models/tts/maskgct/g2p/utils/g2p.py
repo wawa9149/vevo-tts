@@ -10,6 +10,13 @@ from typing import List, Union
 import os
 import json
 import sys
+import fcntl
+
+try:
+    # Use project hybrid Korean G2P (g2pkk → jamo → IPA) when available
+    from text.g2p_module import G2PModule as _KoreanG2PModule
+except Exception:
+    _KoreanG2PModule = None
 
 # separator=Separator(phone=' ', word=' _ ', syllable='|'),
 separator = Separator(word=" _ ", syllable="|", phone=" ")
@@ -60,12 +67,85 @@ lang2backend = {
     "de": phonemizer_de,
 }
 
-with open("./models/tts/maskgct/g2p/utils/mls_en.json", "r") as f:
-    json_data = f.read()
-token = json.loads(json_data)
+TOKEN_MAP_PATH = os.path.abspath("./models/tts/maskgct/g2p/utils/mls_en.json")
+
+
+def _load_token_map():
+    with open(TOKEN_MAP_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _save_token_map(mapping: dict):
+    with open(TOKEN_MAP_PATH, "w", encoding="utf-8") as f:
+        json.dump(mapping, f, ensure_ascii=False, indent=4)
+
+
+def _assign_ids_for_missing_tokens(
+    tokens: List[str], allow_dynamic_add: bool = True, pad_reserved_id: int = 1023
+) -> None:
+    """Ensure all tokens have IDs in the global token map.
+
+    This function updates the on-disk map with a file lock and refreshes the in-memory map.
+
+    Args:
+        tokens: list of IPA tokens (space-split).
+        allow_dynamic_add: whether to add missing tokens to the map.
+        pad_reserved_id: do not allocate this id (reserved for padding).
+    """
+    global token
+    if not allow_dynamic_add:
+        return
+
+    # Fast path: check against current in-memory map
+    missing = [t for t in tokens if t and t not in token]
+    if not missing:
+        return
+
+    # Lock and update on-disk map to avoid races across workers/processes
+    lock_path = TOKEN_MAP_PATH + ".lock"
+    os.makedirs(os.path.dirname(lock_path), exist_ok=True)
+    with open(lock_path, "w") as lock_fp:
+        fcntl.flock(lock_fp, fcntl.LOCK_EX)
+        try:
+            latest = _load_token_map()
+            # Recompute missing against latest on-disk map
+            missing_latest = [t for t in tokens if t and t not in latest]
+            if missing_latest:
+                # Determine next available id; keep below pad_reserved_id
+                next_id = (max(latest.values()) + 1) if len(latest) > 0 else 1
+                # Avoid allocating the reserved padding id
+                if next_id == pad_reserved_id:
+                    next_id += 1
+                added = 0
+                for t in missing_latest:
+                    if next_id >= pad_reserved_id:
+                        # Reached cap; stop adding
+                        break
+                    latest[t] = next_id
+                    next_id += 1
+                    added += 1
+                if added > 0:
+                    _save_token_map(latest)
+                    token = latest  # refresh in-memory map
+        finally:
+            fcntl.flock(lock_fp, fcntl.LOCK_UN)
+
+
+# Initialize global token map after function definitions
+token = _load_token_map()
 
 
 def phonemizer_g2p(text, language):
+    # Korean: use hybrid G2P (g2pkk → jamo → IPA with phonological rules)
+    if language == "ko" and _KoreanG2PModule is not None:
+        ko_g2p = _KoreanG2PModule(backend="korean_hybrid", language="ko")
+        phones = ko_g2p.g2p_conversion(text)  # list of IPA tokens
+        phonemes = " ".join(phones)
+        _assign_ids_for_missing_tokens(phones, allow_dynamic_add=True)
+        token_id = [token[p] for p in phones if p in token]
+        return phonemes, token_id
+
+    # Fallback: use phonemizer/espeak for other languages (or if KO module unavailable)
     langbackend = lang2backend[language]
     phonemes = _phonemize(
         langbackend,
@@ -80,9 +160,11 @@ def phonemizer_g2p(text, language):
     if isinstance(phonemes, list):
         for phone in phonemes:
             phonemes_split = phone.split(" ")
+            _assign_ids_for_missing_tokens(phonemes_split, allow_dynamic_add=True)
             token_id.append([token[p] for p in phonemes_split if p in token])
     else:
         phonemes_split = phonemes.split(" ")
+        _assign_ids_for_missing_tokens(phonemes_split, allow_dynamic_add=True)
         token_id = [token[p] for p in phonemes_split if p in token]
     return phonemes, token_id
 

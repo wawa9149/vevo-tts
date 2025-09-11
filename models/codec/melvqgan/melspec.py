@@ -67,8 +67,12 @@ class MelSpectrogram(nn.Module):
         mel_basis = {}
         hann_window = {}
 
+        # Clamp fmax to slightly below Nyquist to avoid empty filters
+        nyquist = sampling_rate / 2.0
+        safe_fmax = min(fmax, nyquist - 1e-3)
+
         mel = librosa_mel_fn(
-            sr=sampling_rate, n_fft=n_fft, n_mels=num_mels, fmin=fmin, fmax=fmax
+            sr=sampling_rate, n_fft=n_fft, n_mels=num_mels, fmin=fmin, fmax=safe_fmax
         )
         mel_basis = torch.from_numpy(mel).float()
         hann_window = torch.hann_window(win_size)
