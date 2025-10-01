@@ -87,21 +87,32 @@ class HybridKoreanBackend:
                 continue
                 
             try:
-                # Step 1: Apply g2pK pronunciation rules
-                pronunciation = self.g2p(line)
+                # Step 1: Process word by word to preserve space information
+                words = line.split()
+                word_ipa_results = []
                 
-                # Step 2: Convert pronunciation to IPA
-                ipa_result = convert(
-                    hangul=pronunciation,
-                    rules_to_apply='pastcnhovr',  # All phonological rules
-                    convention='ipa',
-                    sep=' '
-                )
+                for word in words:
+                    # Apply g2pK pronunciation rules to each word
+                    word_pronunciation = self.g2p(word)
+                    
+                    # Convert word pronunciation to IPA
+                    word_ipa = convert(
+                        hangul=word_pronunciation,
+                        rules_to_apply='pastcnhovr',  # All phonological rules
+                        convention='ipa',
+                        sep=' '
+                    )
+                    
+                    if word_ipa:
+                        # Split into phonemes and join with phone separator
+                        word_phonemes = word_ipa.split()
+                        word_result = separator.phone.join(word_phonemes)
+                        word_ipa_results.append(word_result)
                 
-                # Step 3: Join with separator
-                if ipa_result:
-                    ipa_phonemes = ipa_result.split()
-                    phones_str = separator.phone.join(ipa_phonemes)
+                # Step 2: Join words with word separator (|_| format)
+                if word_ipa_results:
+                    word_sep = separator.phone + separator.word + separator.phone
+                    phones_str = word_sep.join(word_ipa_results)
                 else:
                     phones_str = ""
                 
@@ -115,14 +126,34 @@ class HybridKoreanBackend:
                 
             except Exception as e:
                 print(f"Warning: Hybrid conversion failed for '{line}': {e}")
-                # Fallback to direct hangul_to_ipa
+                # Fallback to direct hangul_to_ipa (word by word)
                 try:
-                    ipa_result = convert(line, convention='ipa', sep=' ')
-                    ipa_phonemes = ipa_result.split()
-                    phones_str = separator.phone.join(ipa_phonemes)
+                    words = line.split()
+                    fallback_word_results = []
+                    
+                    for word in words:
+                        word_ipa = convert(word, convention='ipa', sep=' ')
+                        if word_ipa:
+                            word_phonemes = word_ipa.split()
+                            word_result = separator.phone.join(word_phonemes)
+                            fallback_word_results.append(word_result)
+                    
+                    if fallback_word_results:
+                        word_sep = separator.phone + separator.word + separator.phone
+                        phones_str = word_sep.join(fallback_word_results)
+                        print(f"DEBUG phones_str: {phones_str}")
+                    else:
+                        phones_str = ""
                     phonemized.append(phones_str)
                 except:
-                    phones_str = separator.phone.join(list(line))
+                    # Last resort: process character by character with space handling
+                    fallback_list = []
+                    for char in line:
+                        if char == ' ':  # Convert space to word separator
+                            fallback_list.append(separator.word)
+                        elif char.strip():  # Add non-empty characters
+                            fallback_list.append(char)
+                    phones_str = separator.phone.join(fallback_list)
                     phonemized.append(phones_str)
         
         return phonemized
