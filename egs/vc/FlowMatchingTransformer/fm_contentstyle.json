@@ -45,10 +45,10 @@
             "vocos_dim": 384,
             "vocos_intermediate_dim": 2048,
             "vocos_num_layers": 12,
-            "pretrained_path": "ckpts/vevo/fvq8192/checkpoint/epoch-0035_step-0182000_loss-13.510459/pytorch_model.bin"
+            "pretrained_path": "/app/data/vevo/models/fvq8192/checkpoint/epoch-0015_step-0582000_loss-10.935531/pytorch_model.bin"
         }
     },
-    "log_dir": "ckpts/vevo",
+    "log_dir": "/app/data/vevo/models",
     "train": {
         "max_epoch": 0,
         "use_dynamic_batchsize": true,
@@ -78,7 +78,7 @@
             1
         ],
         "keep_last": [
-            10
+            100
         ],
         "run_eval": [
             true

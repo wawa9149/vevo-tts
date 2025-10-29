@@ -6,6 +6,7 @@ Hybrid Korean Backend: g2pK → hangul_to_ipa
 
 import sys
 import os
+import re
 from pathlib import Path
 from typing import List
 
@@ -38,7 +39,7 @@ except ImportError:
     class Punctuation:
         @staticmethod
         def default_marks():
-            return ".,!?;:"
+            return ".,!?;:~"
 
 
 class HybridKoreanBackend:
@@ -58,7 +59,7 @@ class HybridKoreanBackend:
             raise ImportError("g2pK and hangul_to_ipa libraries are required")
         
         self.language = language
-        self.punctuation_marks = punctuation_marks
+        self.punctuation_marks = punctuation_marks + "~"
         self.preserve_punctuation = preserve_punctuation
         
         # Initialize g2pK for pronunciation rules
@@ -87,41 +88,44 @@ class HybridKoreanBackend:
                 continue
                 
             try:
-                # Step 1: Process word by word to preserve space information
-                words = line.split()
+                # ✅ Step 1: 단어 + 구두점 단위로 분리
+                tokens = re.findall(rf"[{re.escape(self.punctuation_marks)}]|\w+", line)
+
+
                 word_ipa_results = []
-                
-                for word in words:
-                    # Apply g2pK pronunciation rules to each word
-                    word_pronunciation = self.g2p(word)
-                    
-                    # Convert word pronunciation to IPA
-                    word_ipa = convert(
-                        hangul=word_pronunciation,
-                        rules_to_apply='pastcnhovr',  # All phonological rules
-                        convention='ipa',
-                        sep=' '
-                    )
-                    
-                    if word_ipa:
-                        # Split into phonemes and join with phone separator
-                        word_phonemes = word_ipa.split()
-                        word_result = separator.phone.join(word_phonemes)
-                        word_ipa_results.append(word_result)
-                
-                # Step 2: Join words with word separator (|_| format)
-                if word_ipa_results:
-                    word_sep = separator.phone + separator.word + separator.phone
-                    phones_str = word_sep.join(word_ipa_results)
-                else:
-                    phones_str = ""
-                
-                # Step 4: Handle punctuation
-                if self.preserve_punctuation:
-                    for punct in self.punctuation_marks:
-                        if punct in line:
-                            phones_str = phones_str + separator.phone + punct
-                
+                for token in tokens:
+                    if token in self.punctuation_marks:
+                        # ✅ Step 2: 구두점은 '_'로 치환
+                        word_ipa_results.append("_")
+                    else:
+                        # ✅ Step 3: 단어 → g2p → IPA 변환
+                        word_pronunciation = self.g2p(token)
+                        word_ipa = convert(
+                            hangul=word_pronunciation,
+                            rules_to_apply="pastcnhovr",
+                            convention="ipa",
+                            sep=" "
+                        )
+                        if word_ipa:
+                            word_phonemes = word_ipa.split()
+                            word_result = separator.phone.join(word_phonemes)
+                            word_ipa_results.append(word_result)
+
+                # ✅ Step 4: word & punctuation join
+                phones_str = ""
+                for item in word_ipa_results:
+                    if item == "_":  # 구두점이 '_'로 치환된 경우
+                        phones_str += separator.phone + "_"
+                    else:
+                        if phones_str:  # 앞에 내용 있으면 word separator
+                            phones_str += separator.phone + separator.word + separator.phone
+                        phones_str += item
+
+                # ✅ Step 5: 연속된 '_' 제거 (|_|_ -> |_)
+                # 연속된 |_|_|_ 패턴을 |_로 치환
+                pattern = f"({re.escape(separator.phone)}_)+"
+                phones_str = re.sub(pattern, f"{separator.phone}_", phones_str)
+
                 phonemized.append(phones_str)
                 
             except Exception as e:

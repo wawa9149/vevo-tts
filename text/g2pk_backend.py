@@ -114,12 +114,15 @@ class G2pKBackend:
                 # Convert to individual phonemes and add separators
                 phone_list = []
                 for char in phones:
-                    if char.strip():  # Skip empty characters
+                    if char == ' ':  # Convert space to word separator
+                        phone_list.append(separator.word)
+                    elif char.strip():  # Add non-empty characters
                         phone_list.append(char)
                 
                 # Join with phone separator
                 if phone_list:
                     phones_str = separator.phone.join(phone_list)
+                    print(f"DEBUG phones_str: {phones_str}")
                 else:
                     phones_str = ""
                 
@@ -134,8 +137,14 @@ class G2pKBackend:
                 
             except Exception as e:
                 print(f"Warning: g2pK conversion failed for '{line}': {e}")
-                # Fallback: return original text with phone separators
-                phones_str = separator.phone.join(list(line))
+                # Fallback: return original text with proper separators
+                fallback_list = []
+                for char in line:
+                    if char == ' ':  # Convert space to word separator
+                        fallback_list.append(separator.word)
+                    elif char.strip():  # Add non-empty characters
+                        fallback_list.append(char)
+                phones_str = separator.phone.join(fallback_list)
                 phonemized.append(phones_str)
         
         return phonemized

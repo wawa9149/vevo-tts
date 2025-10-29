@@ -515,6 +515,7 @@ class VevoInferencePipeline:
             if style_ref_wav_text_language is None:
                 style_ref_wav_text_language = "zh"
 
+            print(f"DEBUG src_text_language: {src_text_language}")
             if display_audio:
                 print("-" * 20)
                 print("Source Text: [{}]".format(src_text))

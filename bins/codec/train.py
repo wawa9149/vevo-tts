@@ -15,8 +15,10 @@ from models.codec.coco.rep_coco_trainer import RepCocoTrainer
 
 from utils.util import load_config
 
+torch.cuda.empty_cache()
 
 def build_trainer(args, cfg):
+    print(f"Building trainer for {cfg.model_type}")
     supported_trainer = {
         "FAcodec": FAcodecTrainer,
         "RepCoco": RepCocoTrainer,
