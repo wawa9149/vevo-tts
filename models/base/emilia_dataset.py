@@ -33,8 +33,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-MNT_PATH = "/app/data/dataset-vevo/dataset-ko"
-CACHE_PATH = "/app/data/dataset-vevo/dataset-ko-cache"
+# Please fill out your emilia data root path
+MNT_PATH = ""
+CACHE_PATH = "/home/ubuntu/tts-audio/data/dataset-ko-cache"
 
 
 class EmiliaDataset(torch.utils.data.Dataset):
@@ -42,12 +43,14 @@ class EmiliaDataset(torch.utils.data.Dataset):
         self,
         cache_type="path",
         cfg=None,
+        is_valid=False,
     ):  # 'path' or 'meta'
 
         assert cfg is not None
 
         self.cache_type = cache_type
         self.cfg = cfg
+        self.is_valid = is_valid
 
         self.dataset_ratio_dict = self.cfg.dataset
         self.emilia_ratio = self.dataset_ratio_dict["emilia"]
@@ -56,7 +59,7 @@ class EmiliaDataset(torch.utils.data.Dataset):
         self.wav_paths = []
         self.mnt_path = MNT_PATH
 
-        self.language_list = ["zh", "en"]  # Data language list
+        self.language_list = ["ko"]  # Data language list
         self.wav_path_index2duration = []
         self.wav_path_index2phonelen = []
         self.index2num_frames = []
@@ -109,60 +112,97 @@ class EmiliaDataset(torch.utils.data.Dataset):
             self.duration_setting["max"] = self.cfg.preprocess.max_dur
 
     def load_cached_paths(self):
-        logger.info("Loaded paths from cache files")
+        from pathlib import Path
+        import pandas as pd
+        import pickle
+        import time
+        from accelerate import Accelerator
+
+        logger.info("→ loading cached paths...")
+
+        logger.info("✓ Loaded paths from cache files")
+
+        # --- 캐시 불러오기 ---
         with open(self.wav_paths_cache, "rb") as f:
             all_wav_paths = pickle.load(f)
         with open(self.json_paths_cache, "rb") as f:
             all_json_paths = pickle.load(f)
+        with open(self.duration_cache, "rb") as f:
+            all_durations = pickle.load(f)
+        with open(self.phone_count_cache, "rb") as f:
+            all_phone_counts = pickle.load(f)
 
-        # Select part of data according to emilia_ratio
+        # --- Accelerate rank 체크 ---
+        accelerator = Accelerator()
+        rank = accelerator.process_index
+        is_main = accelerator.is_main_process
+
+        # --- split index 캐시 경로 ---
+        split_cache_dir = Path(self.cache_folder)
+        split_cache_dir.mkdir(parents=True, exist_ok=True)
+
+        split_name = "valid" if self.is_valid else "train"
+        split_index_path = split_cache_dir / f"split_indices_{split_name}.pkl"
+
+        # --- rank0만 CSV 읽고 split 인덱스 저장 ---
+        if is_main:
+            meta_csv_path = Path(self.cache_folder).parent / "metadata_vevo.csv"
+            if not meta_csv_path.exists():
+                raise FileNotFoundError(f"metadata_vevo.csv not found at {meta_csv_path}")
+
+            logger.info(f"Rank0: Reading {meta_csv_path} to extract {split_name} indices...")
+            df = pd.read_csv(meta_csv_path, sep="|")
+
+            # split 필터링
+            if self.is_valid:
+                df = df[df["split"].str.lower().isin(["validation", "valid", "val"])]
+            else:
+                df = df[df["split"].str.lower().isin(["training", "train"])]
+
+            selected_paths = set(df["path"].tolist())
+            selected_indices = [i for i, p in enumerate(all_wav_paths) if p in selected_paths]
+
+            # 캐시로 저장
+            with open(split_index_path, "wb") as f:
+                pickle.dump(selected_indices, f)
+            logger.info(f"✅ Saved split indices ({len(selected_indices)}) to {split_index_path}")
+
+        # --- rank0 외에는 기다렸다가 로드 ---
+        accelerator.wait_for_everyone()
+        timeout = 600
+        start = time.time()
+        while not split_index_path.exists():
+            time.sleep(2)
+            if time.time() - start > timeout:
+               raise TimeoutError(f"Waiting for {split_index_path} timed out")
+
+        with open(split_index_path, "rb") as f:
+            selected_indices = pickle.load(f)
+        logger.info(f"Rank{rank}: loaded {len(selected_indices)} split indices from cache")
+
+        # --- ratio 적용 (emilia_ratio < 1.0일 경우 일부 샘플링) ---
         if self.emilia_ratio < 1.0:
-            total_samples = len(all_wav_paths)
-            num_samples = int(total_samples * self.emilia_ratio)
-            selected_indices = random.sample(range(total_samples), num_samples)
+            import random
+            num_samples = int(len(selected_indices) * self.emilia_ratio)
+            selected_indices = random.sample(selected_indices, num_samples)
 
-            self.wav_paths = [all_wav_paths[i] for i in selected_indices]
+        # --- 실제 데이터 선택 ---
+        self.wav_paths = [all_wav_paths[i] for i in selected_indices]
+        self.json_paths = [all_json_paths[i] for i in selected_indices]
+        self.wav_path_index2duration = [all_durations[i] for i in selected_indices]
+        self.wav_path_index2phonelen = [all_phone_counts[i] for i in selected_indices]
 
-            # TODO: check what does json_paths do.
-            # self.json_paths = [all_json_paths[i] for i in selected_indices]
-            self.json_paths = []
+        # --- num_frames 계산 ---
+        self.index2num_frames = [
+            d * 50 + p for d, p in zip(self.wav_path_index2duration, self.wav_path_index2phonelen)
+        ]
 
-            if self.cache_type == "path":
-                with open(self.duration_cache, "rb") as f:
-                    all_durations = pickle.load(f)
-                with open(self.phone_count_cache, "rb") as f:
-                    all_phone_counts = pickle.load(f)
-
-                self.wav_path_index2duration = [
-                    all_durations[i] for i in selected_indices
-                ]
-                self.wav_path_index2phonelen = [
-                    all_phone_counts[i] for i in selected_indices
-                ]
-        else:
-            assert self.emilia_ratio == 1
-
-            self.wav_paths = all_wav_paths
-            self.json_paths = all_json_paths
-            if self.cache_type == "path":
-                with open(self.duration_cache, "rb") as f:
-                    self.wav_path_index2duration = pickle.load(f)
-                with open(self.phone_count_cache, "rb") as f:
-                    self.wav_path_index2phonelen = pickle.load(f)
-
-        # Calculate the number of frames
-        if self.cache_type == "path":
-            self.index2num_frames = []
-            for duration, phone_count in zip(
-                self.wav_path_index2duration, self.wav_path_index2phonelen
-            ):
-                self.index2num_frames.append(duration * 50 + phone_count)
-
-        logger.info("All Emilia paths got successfully, ratio: %f" % self.emilia_ratio)
         logger.info(
-            "Number of wavs: %d, Number of jsons: %d"
-            % (len(self.wav_paths), len(self.json_paths))
+            f"{'Validation' if self.is_valid else 'Training'} split loaded successfully: "
+            f"{len(self.wav_paths)} wavs"
         )
+        logger.info("All Emilia paths got successfully, ratio: %f" % self.emilia_ratio)
+
 
     def save_cached_paths(self):
         with open(self.wav_paths_cache, "wb") as f:
@@ -215,43 +255,13 @@ class EmiliaDataset(torch.utils.data.Dataset):
             # self.index2num_frames.append(duration * self.cfg.preprocess.sample_rate)
 
     def get_meta_from_wav_path(self, wav_path):
-        wav_path = wav_path.replace("wav_new/", "")
-        index = int(wav_path.split("_")[-1].split(".")[0])
-        audio_name = "_".join(wav_path.split("/")[-1].split("_")[:-1])
-        dir_name = "/".join(wav_path.split("/")[:-1])
-        # original code: json_name = audio_name + "_fixzh.json"
-        json_name = audio_name + ".json"
-        json_path = dir_name + "/" + json_name
-        meta = None
-        if self.cache_type == "meta":
-            meta = self.json_path2meta[json_path][str(index)]
-            return meta
-        elif self.cache_type == "path":
-            try:
-                buffer = json_path.replace("_fixzh", "")
-                if "/MLS/" in json_path:
-                    with open(buffer, "r") as f:
-                        meta = json.load(f)[os.path.basename(wav_path)]
-                else:
-                    # original 코드
-                    # with open(buffer, "r") as f:
-                    #     meta = json.load(f)[index]
+        return {
+            "language": "ko",
+            "duration": 0.0,
+            "phone_count": 0,
+            "text": "",
+        }
 
-                    with open(buffer, "r") as f:
-                        data = json.load(f)
-                        if isinstance(data, list):  # 리스트라면
-                            meta = data[index]
-                        elif isinstance(data, dict):  # 딕셔너리라면
-                            meta = data[str(index)]
-                        else:
-                            raise ValueError(f"Unexpected JSON structure: {type(data)}")
-
-
-            except Exception as e:
-                logger.info("Error json: {} error: {}".format(json_path, e))
-        del index, audio_name, dir_name, json_name, json_path
-        
-        return meta
 
     def __len__(self):
         return self.wav_paths.__len__()
