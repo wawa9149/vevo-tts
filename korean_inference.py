@@ -100,10 +100,14 @@ if __name__ == "__main__":
     print("Models loaded successfully!")
 
     # ===== Input Data =====
-    with open("/app/workspace/vevo-infer/src_text.txt", "r", encoding="utf-8") as f:
+    with open("/home/ubuntu/tts-audio/data/inference/src_text.txt", "r", encoding="utf-8") as f:
         src_text = f.read().strip().strip('"')
+    print(f"Source text: {src_text}")
     
-    ref_wav_path = "/app/data/vevo/5f4141e29dd513131eacee2f_happy.wav"
+    ref_wav_path = "/home/ubuntu/tts-audio/data/inference/5f4141e29dd513131eacee2f_happy.wav"
+    with open("/home/ubuntu/tts-audio/data/inference/ref_text.txt", "r", encoding="utf-8") as f:
+        ref_text = f.read().strip().strip('"')
+    print(f"Reference text: {ref_text}")
 
     # ===== Inference Parameters =====
     inference_params = {
@@ -140,7 +144,7 @@ if __name__ == "__main__":
         src_text=src_text,
         ref_wav_path=ref_wav_path,
         output_path=output_path,
-        ref_text=src_text,  # Use same text for style reference
+        ref_text=ref_text, 
         **inference_params
     )
 
