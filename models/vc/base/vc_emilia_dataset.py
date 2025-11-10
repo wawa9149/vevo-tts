@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 
 
 class VCEmiliaDataset(EmiliaDataset):
-    def __init__(self, cfg):
-        super(VCEmiliaDataset, self).__init__(cfg=cfg)
+    def __init__(self, cfg, is_valid=False):
+        super(VCEmiliaDataset, self).__init__(cfg=cfg, is_valid=is_valid)
 
         self.sample_rate = self.cfg.preprocess.sample_rate
 

@@ -19,7 +19,7 @@ import accelerate
 from accelerate.utils import ProjectConfiguration
 
 from models.base.base_sampler import VariableSampler
-
+from torch.utils.data.distributed import DistributedSampler
 
 def _is_batch_full(batch, num_tokens, max_tokens, max_sentences):
     if len(batch) == 0:
@@ -105,6 +105,19 @@ class BaseTrainer:
                     os.path.join(self.exp_dir, "checkpoint"), "train.log"
                 )
                 self.logger = Logger(self.log_file, level=self.args.log_level).logger
+
+        from torch.utils.tensorboard import SummaryWriter
+
+        self.sw = None
+        if self.accelerator.is_main_process:
+            try:
+                log_dir = os.path.join(self.exp_dir, "tensorboard")
+                os.makedirs(log_dir, exist_ok=True)
+                self.sw = SummaryWriter(log_dir=log_dir)
+                self.logger.info(f"TensorBoard SummaryWriter initialized at {log_dir}")
+            except Exception as e:
+                self.logger.warning(f"⚠️ Failed to initialize TensorBoard writer: {e}")
+                self.sw = None
 
         self.time_window = ValueWindow(100)
 
@@ -209,8 +222,8 @@ class BaseTrainer:
             if self.accelerator.is_main_process:
                 self.logger.info("Initializing accelerate...")
             start = time.monotonic_ns()
-            self.train_dataloader = self.accelerator.prepare(
-                self.train_dataloader,
+            self.train_dataloader, self.valid_dataloader = self.accelerator.prepare(
+                self.train_dataloader, self.valid_dataloader
             )
 
         if isinstance(self.model, dict):
@@ -388,17 +401,22 @@ class BaseTrainer:
         raise NotImplementedError
 
     def _build_dataloader(self):
+        Dataset, Collator = self._build_dataset()
+
+        # -----------------------------
+        # 1️⃣ Dataset 인스턴스 생성
+        # -----------------------------
+        train_dataset = Dataset(cfg=self.cfg, is_valid=False)
+        valid_dataset = Dataset(cfg=self.cfg, is_valid=True)
+
+        train_collate = Collator(self.cfg)
+        valid_collate = Collator(self.cfg)
+
+        # -----------------------------
+        # 2️⃣ Dynamic batchsize (길이 기반)
+        # -----------------------------
         if self.cfg.train.use_dynamic_batchsize:
             print("Use Dynamic Batchsize......")
-            Dataset, Collator = self._build_dataset()
-            if (
-                hasattr(self.cfg.train, "use_emilia_dataset")
-                and self.cfg.train.use_emilia_dataset
-            ):
-                train_dataset = Dataset(cfg=self.cfg)
-            else:
-                train_dataset = Dataset(self.cfg, self.cfg.dataset[0], is_valid=False)
-            train_collate = Collator(self.cfg)
 
             t = time.time()
             if self.accelerator.is_main_process:
@@ -414,7 +432,7 @@ class BaseTrainer:
             )
 
             if self.accelerator.is_main_process:
-                info = "Time taken to batch: {:.1f}s, #bacthes = {}".format(
+                info = "Time taken to batch: {:.1f}s, #batches = {}".format(
                     time.time() - t, len(batch_sampler)
                 )
                 print(info)
@@ -444,32 +462,61 @@ class BaseTrainer:
                 pin_memory=self.cfg.train.dataloader.pin_memory,
                 prefetch_factor=32,
             )
+
+        # ✅ Validation: 고정 batch로 생성
+            valid_sampler = (
+                DistributedSampler(valid_dataset, shuffle=False)
+                if self.accelerator.num_processes > 1 else None
+            )
+
+            valid_loader = DataLoader(
+                valid_dataset,
+                sampler=valid_sampler,
+                shuffle=False,
+                collate_fn=valid_collate,
+                batch_size=self.cfg.train.batch_size,
+                num_workers=self.cfg.train.dataloader.num_worker,
+                pin_memory=self.cfg.train.dataloader.pin_memory,
+            )
+
             self.accelerator.wait_for_everyone()
 
-            valid_loader = None
-
+    # -----------------------------
+    # 3️⃣ 일반 batchsize 모드
+    # -----------------------------
         else:
             print("Use Normal Batchsize......")
-            Dataset, Collator = self._build_dataset()
-            if (
-                hasattr(self.cfg.train, "use_emilia_dataset")
-                and self.cfg.train.use_emilia_dataset
-            ):
-                train_dataset = Dataset(cfg=self.cfg)
-            else:
-                train_dataset = Dataset(self.cfg, self.cfg.dataset[0], is_valid=False)
-            train_collate = Collator(self.cfg)
 
+            # ✅ 분산 훈련 샘플러 추가 (shuffle=True)
+            train_sampler = (
+                DistributedSampler(train_dataset, shuffle=True)
+                if self.accelerator.num_processes > 1 else None
+            )
             train_loader = DataLoader(
                 train_dataset,
-                shuffle=True,
+                sampler=train_sampler,
+                shuffle=(train_sampler is None),
                 collate_fn=train_collate,
                 batch_size=self.cfg.train.batch_size,
                 num_workers=self.cfg.train.dataloader.num_worker,
                 pin_memory=self.cfg.train.dataloader.pin_memory,
             )
 
-            valid_loader = None
+            # ✅ 분산 검증 샘플러 추가 (중복 평가 방지)
+            valid_sampler = (
+                DistributedSampler(valid_dataset, shuffle=False)
+                if self.accelerator.num_processes > 1 else None
+            )
+            valid_loader = DataLoader(
+                valid_dataset,
+                sampler=valid_sampler,
+                shuffle=False,
+                collate_fn=valid_collate,
+                batch_size=self.cfg.train.batch_size,
+                num_workers=self.cfg.train.dataloader.num_worker,
+                pin_memory=self.cfg.train.dataloader.pin_memory,
+            )
+
             self.accelerator.wait_for_everyone()
 
         return train_loader, valid_loader
@@ -498,12 +545,16 @@ class BaseTrainer:
         return criteria
 
     def write_summary(self, losses, stats):
+        if self.sw is None:
+            return
         for key, value in losses.items():
-            self.sw.add_scalar(key, value, self.step)
+            self.sw.add_scalar(f"Train/{key}", value, self.step)
 
     def write_valid_summary(self, losses, stats):
+        if self.sw is None:
+            return
         for key, value in losses.items():
-            self.sw.add_scalar(key, value, self.step)
+            self.sw.add_scalar(f"Valid/{key}", value, self.step)
 
     def get_state_dict(self):
         state_dict = {
@@ -524,7 +575,7 @@ class BaseTrainer:
         self.optimizer.load_state_dict(checkpoint["optimizer"])
         self.scheduler.load_state_dict(checkpoint["scheduler"])
 
-    def _train_step(self, batch):
+    def _train_step(self, batch, is_valid: bool = False):
         raise NotImplementedError
 
     def _train_epoch(self):
@@ -536,6 +587,10 @@ class BaseTrainer:
                 self.model[key].train()
         else:
             self.model.train()
+
+        # ✅ 분산 샘플러 epoch 설정 추가 (안정성 향상)
+        if hasattr(self.train_dataloader, "sampler") and hasattr(self.train_dataloader.sampler, "set_epoch"):
+            self.train_dataloader.sampler.set_epoch(self.epoch)
 
         epoch_sum_loss: float = 0.0
         epoch_losses: dict = {}
@@ -562,7 +617,9 @@ class BaseTrainer:
                     self.train_dataloader.batch_sampler.skip_steps(steps_to_skip)
             # If normal batch size is used, we need to modify sampler
             else:
-                if hasattr(self.train_dataloader, "sampler"):
+                if hasattr(self.train_dataloader, "sampler") and hasattr(self.train_dataloader.sampler, "set_epoch"):
+                    self.train_dataloader.sampler.set_epoch(self.epoch)
+
                     # Calculate the number of samples to skip
                     samples_to_skip = (
                         steps_to_skip
@@ -591,6 +648,7 @@ class BaseTrainer:
             with self.accelerator.accumulate(self.model):
                 total_loss, train_losses, training_stats = self._train_step(batch)
             self.batch_count += 1
+            self.current_loss = float(total_loss)
             ema_loss = (
                 0.98 * ema_loss + 0.02 * self.current_loss
                 if ema_loss is not None
@@ -671,47 +729,39 @@ class BaseTrainer:
                     self.logger.error("Failed to save backup state: {}".format(e))
 
     def train_loop(self):
-        r"""Training loop. The public entry of training process."""
-        # Wait everyone to prepare before we move on
+        """Train + Validation loop with Early Stopping."""
         self.accelerator.wait_for_everyone()
-        # dump config file
-        # if self.accelerator.is_main_process:
-        #     self._dump_cfg(self.config_save_path)
 
-        # self.optimizer.zero_grad()
+        # 🧠 Early Stopping 설정
+        patience = getattr(self.cfg.train, "early_stopping_patience", 5)  # 개선 없는 epoch 허용 횟수
+        best_val_loss = float("inf")
+        epochs_no_improve = 0
 
-        # Wait to ensure good to go
-        self.accelerator.wait_for_everyone()
         while self.epoch < self.max_epoch:
             if self.accelerator.is_main_process:
-                self.logger.info("\n")
-                self.logger.info("-" * 32)
-                self.logger.info("Epoch {}: ".format(self.epoch))
+                self.logger.info("\n" + "-" * 32)
+                self.logger.info(f"Epoch {self.epoch}")
 
-            # Do training & validating epoch
+            # -----------------
+            # Train
+            # -----------------
             train_total_loss, train_losses = self._train_epoch()
-            if isinstance(train_losses, dict):
-                for key, loss in train_losses.items():
-                    if self.accelerator.is_main_process:
-                        self.logger.info("  |- Train/{} Loss: {:.6f}".format(key, loss))
-                    self.accelerator.log(
-                        {"Epoch/Train {} Loss".format(key): loss},
-                        step=self.epoch,
-                    )
-
-            valid_total_loss, valid_losses = 0.0, 0.0
-            # if isinstance(valid_losses, dict):
-            #     for key, loss in valid_losses.items():
-            #         if self.accelerator.is_main_process:
-            #             self.logger.info("  |- Valid/{} Loss: {:.6f}".format(key, loss))
-            #         self.accelerator.log(
-            #             {"Epoch/Train {} Loss".format(key): loss},
-            #             step=self.epoch,
-            #         )
-
             if self.accelerator.is_main_process:
-                self.logger.info("  |- Train/Loss: {:.6f}".format(train_total_loss))
-                self.logger.info("  |- Valid/Loss: {:.6f}".format(valid_total_loss))
+                for key, loss in train_losses.items():
+                    self.logger.info(f"  |- Train/{key}: {loss:.6f}")
+
+            # -----------------
+            # Validation
+            # -----------------
+            valid_total_loss, valid_losses = self._valid_epoch()
+            if self.accelerator.is_main_process:
+                for key, loss in valid_losses.items():
+                    self.logger.info(f"  |- Valid/{key}: {loss:.6f}")
+                # ✅ TensorBoard logging 추가
+                self.write_valid_summary(valid_losses, {})
+            # -----------------
+            # Logging
+            # -----------------
             self.accelerator.log(
                 {
                     "Epoch/Train Loss": train_total_loss,
@@ -720,25 +770,65 @@ class BaseTrainer:
                 step=self.epoch,
             )
 
-            self.accelerator.wait_for_everyone()
+            # -----------------
+            # Scheduler Step
+            # -----------------
             if isinstance(self.scheduler, dict):
                 for key in self.scheduler.keys():
                     self.scheduler[key].step()
             else:
                 self.scheduler.step()
 
-            # Update info for each epoch
+            # -----------------
+            # Early Stopping 체크
+            # -----------------
+            if valid_total_loss < best_val_loss:
+                best_val_loss = valid_total_loss
+                epochs_no_improve = 0
+
+                if self.accelerator.is_main_process:
+                    self.logger.info(
+                        f"✅ Validation loss improved to {best_val_loss:.6f}. Saving checkpoint..."
+                    )
+                    self.current_loss = float(best_val_loss)  # ← 파일명에 val loss 반영
+                    self.save_checkpoint()
+
+            else:
+                epochs_no_improve += 1
+                if self.accelerator.is_main_process:
+                    self.logger.info(
+                        f"⚠️ No improvement in validation loss ({epochs_no_improve}/{patience})"
+                    )
+
+            # 조기 종료 조건
+            if epochs_no_improve >= patience:
+                if self.accelerator.is_main_process:
+                    self.logger.info(
+                        f"🛑 Early stopping triggered after {patience} epochs without improvement."
+                    )
+                break
+
             self.epoch += 1
 
-        # Finish training and save final checkpoint
+        # -----------------
+        # 최종 체크포인트 저장
+        # -----------------
         self.accelerator.wait_for_everyone()
         if self.accelerator.is_main_process:
-            self.accelerator.save_state(
-                os.path.join(
-                    self.checkpoint_dir,
-                    "final_epoch-{:04d}_step-{:07d}".format(self.epoch, self.step),
-                )
+            final_path = os.path.join(
+                self.checkpoint_dir,
+                f"final_epoch-{self.epoch:04d}_step-{self.step:07d}",
             )
+            self.accelerator.save_state(final_path)
+            self.logger.info(f"💾 Final checkpoint saved at {final_path}")
+
+        if self.sw is not None and self.accelerator.is_main_process:
+            try:
+                self.sw.flush()
+                self.sw.close()
+            except Exception as e:
+                pass
+
         self.accelerator.end_training()
 
     def echo_log(self, losses, mode="Training"):
@@ -757,3 +847,72 @@ class BaseTrainer:
             else:
                 message.append(str(key) + "=" + str(round(float(losses[key]), 5)))
         self.logger.info(", ".join(message))
+    
+    def _valid_epoch(self):
+        """Validation 루프 (multi-GPU 분산 평균 계산 포함)"""
+        if self.valid_dataloader is None:
+            return 0.0, {}
+
+        # 각 GPU가 나눠서 검증하도록 sampler 자동 생성
+        if hasattr(self.valid_dataloader, "sampler") and hasattr(self.valid_dataloader.sampler, "set_epoch"):
+            self.valid_dataloader.sampler.set_epoch(self.epoch)
+
+        if isinstance(self.model, dict):
+            for key in self.model.keys():
+                self.model[key].eval()
+        else:
+            self.model.eval()
+
+        epoch_sum_loss = 0.0
+        epoch_losses = {}
+        num_batches = 0
+        device = self.accelerator.device
+
+        # ✅ 진입 로그 추가
+        if self.accelerator.is_main_process:
+            self.logger.info(f"🟡 Starting validation at epoch {self.epoch} "
+                            f"({len(self.valid_dataloader)} batches total)")
+
+        with torch.no_grad():
+            for i, batch in enumerate(self.valid_dataloader):
+                # ✅ 진행률 로그 (100개 단위로)
+                if i % 100 == 0 and self.accelerator.is_main_process:
+                    self.logger.info(f"[Valid] Processing batch {i}/{len(self.valid_dataloader)}")
+
+                for k, v in batch.items():
+                    if isinstance(v, torch.Tensor):
+                        batch[k] = v.to(device)
+
+                total_loss, valid_losses, _ = self._train_step(batch, is_valid=True)
+
+                # 각 GPU별로 loss를 gather해서 평균냄
+                gathered_losses = self.accelerator.gather_for_metrics(torch.tensor([total_loss], device=device))
+                mean_loss = gathered_losses.mean().item()
+                epoch_sum_loss += mean_loss
+
+                for key, value in valid_losses.items():
+                    if key not in epoch_losses:
+                        epoch_losses[key] = 0.0
+                    # 개별 loss도 평균 처리
+                    gathered = self.accelerator.gather_for_metrics(torch.tensor([value], device=device))
+                    epoch_losses[key] += gathered.mean().item()
+
+                num_batches += 1
+
+        # 전체 평균 계산 (GPU별 batch 수 통합)
+        num_batches_tensor = torch.tensor([num_batches], device=device)
+        gathered_batches = self.accelerator.gather_for_metrics(num_batches_tensor)
+        global_num_batches = gathered_batches.sum().item()
+
+        if global_num_batches > 0:
+            epoch_sum_loss /= global_num_batches
+            for key in epoch_losses.keys():
+                epoch_losses[key] /= global_num_batches
+
+        # 모든 프로세스 동기화
+        self.accelerator.wait_for_everyone()
+
+        if self.accelerator.is_main_process:
+            self.logger.info(f"🟢 Validation complete - avg_loss: {epoch_sum_loss:.6f}")
+
+        return epoch_sum_loss, epoch_losses

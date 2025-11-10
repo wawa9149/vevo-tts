@@ -68,55 +68,61 @@ class VQVAETrainer(BaseTrainer):
     def _build_dataset(self):
         return VCEmiliaDataset, VCCollator
 
-    def _train_step(self, batch):
+    def _train_step(self, batch, is_valid=False):
+        """한 step (train 또는 validation) 실행"""
         train_losses = {}
-        total_loss = 0
+        total_loss = 0.0
         train_stats = {}
 
-        speech = batch["wav"]  # [B, T]
+        speech = batch["wav"]
         feat = None
 
+        # 🔸 HuBERT feature 추출
         if self.cfg.model.representation_type == "hubert":
             sr = self.cfg.model.representation_sample_rate
-            wavs = batch[f"wav_{sr}"]  # [B, T]
-            wav_lens = batch[f"wav_{sr}_len"]  # [B,]
-            feat = self._extract_hubert_feature(wavs, wav_lens)  # [B, T, D]
+            wavs = batch[f"wav_{sr}"]
+            wav_lens = batch[f"wav_{sr}_len"]
+            feat = self._extract_hubert_feature(wavs, wav_lens)
 
-        # Gaussian normalization
+        # 🔸 Gaussian normalization
         if getattr(self.cfg.model, "use_norm_feat", False):
             feat = (feat - self.feat_norm_mean.to(feat)) / self.feat_norm_std.to(feat)
 
-        torch.cuda.empty_cache()
+        if feat is None:
+            raise ValueError("❌ feat is None — check representation_type or feature extraction config.")
 
+
+        # 🔸 모델 forward
         if getattr(self.cfg.model.repcodec, "repcodec_type", "amphion") == "amphion":
             feat_rec, codebook_loss, _ = self.model(feat)
+            perplexity = None
         else:
-            assert self.cfg.model.repcodec.repcodec_type == "vevo"
-            feat_rec, _, _, vqloss, _ = self.model(feat.transpose(1, 2))
+            feat_rec, _, _, vqloss, perplexity = self.model(feat.transpose(1, 2))
             feat_rec = feat_rec.transpose(1, 2)
             codebook_loss = torch.sum(vqloss)
 
         rec_loss = torch.nn.functional.l1_loss(feat_rec, feat)
-        total_loss += rec_loss * 32  # TODO: write as a hyparam
-        train_losses["rec_loss"] = rec_loss
+        total_loss = rec_loss * 32 + codebook_loss
 
-        total_loss += codebook_loss
+        train_losses["rec_loss"] = rec_loss
         train_losses["codebook_loss"] = codebook_loss
 
-        self.optimizer.zero_grad()
-        self.accelerator.backward(total_loss)
-        if self.accelerator.sync_gradients:
-            self.accelerator.clip_grad_norm_(
-                filter(lambda p: p.requires_grad, self.model.parameters()), 1.0
-            )
-        self.optimizer.step()
-        self.scheduler.step()
+        if perplexity is not None:
+            self.logger.info(f"  |- perplexity: {perplexity.mean().item():.2f}")
 
-        for item in train_losses:
-            train_losses[item] = train_losses[item].item()
+        # 🔹 Validation일 때는 backward 하지 않음
+        if not is_valid:
+            self.optimizer.zero_grad()
+            self.accelerator.backward(total_loss)
+            if self.accelerator.sync_gradients:
+                self.accelerator.clip_grad_norm_(
+                    filter(lambda p: p.requires_grad, self.model.parameters()), 1.0
+                )
+            self.optimizer.step()
+            self.scheduler.step()
+
+        for k in train_losses:
+            train_losses[k] = train_losses[k].item()
 
         self.current_loss = total_loss.item()
-
-        train_losses["batch_size"] = speech.shape[0]
-
-        return (total_loss.item(), train_losses, train_stats)
+        return total_loss.item(), train_losses, train_stats
