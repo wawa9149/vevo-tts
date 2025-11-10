@@ -28,7 +28,7 @@ if [ "$resume" = true ]; then
         --checkpoint_path "$checkpoint_path"
 else
     echo "▶ Training from scratch"
-    CUDA_VISIBLE_DEVICES="0,1,2,3,4,5,6,7" accelerate launch --main_process_port 14557 --mixed_precision="bf16" \
+    CUDA_VISIBLE_DEVICES="0,1,2,3" accelerate launch --main_process_port 14557 --mixed_precision="bf16" \
         "${work_dir}"/bins/vc/train.py \
         --config="$exp_config" \
         --exp_name="$exp_name" \
