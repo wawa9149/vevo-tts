@@ -36,6 +36,7 @@
         "lr_warmup_steps": 10000,
         "lr_scheduler": "constant",
         "num_train_steps": 100000,
+        "early_stopping_patience": 10,
         "adam": {
             "lr": 1e-4,
             "betas": [

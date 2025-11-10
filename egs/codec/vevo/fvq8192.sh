@@ -11,8 +11,11 @@ exp_config="$exp_dir/fvq8192.json"
 exp_name="fvq8192"
 
 ####### Train Model ###########
-CUDA_VISIBLE_DEVICES="0" accelerate launch --main_process_port 14556 --mixed_precision="bf16" \
+CUDA_VISIBLE_DEVICES="0,1,2,3" accelerate launch --main_process_port 14556 --mixed_precision="bf16" \
     "${work_dir}"/bins/codec/train.py \
     --config=$exp_config \
     --exp_name=$exp_name \
-    --log_level debug
+    --log_level debug \
+    --resume \
+    --resume_type resume \                                        
+    --checkpoint "ckpts/vevo/fvq8192/checkpoint/epoch-0027_step-0030660_loss-3.132201"
