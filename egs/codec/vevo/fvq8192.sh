@@ -17,5 +17,5 @@ CUDA_VISIBLE_DEVICES="0,1,2,3" accelerate launch --main_process_port 14556 --mix
     --exp_name=$exp_name \
     --log_level debug \
     --resume \
-    --resume_type resume \                                        
-    --checkpoint "ckpts/vevo/fvq8192/checkpoint/epoch-0027_step-0030660_loss-3.132201"
+    --resume_type resume \
+    --checkpoint "ckpts/vevo/fvq8192/checkpoint/epoch-0045_step-0051465_loss-3.068950"

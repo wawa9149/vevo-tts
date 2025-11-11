@@ -520,16 +520,6 @@ class VevoInferencePipeline:
                 print("-" * 20)
                 print("Source Text: [{}]".format(src_text))
 
-            # Compute adaptive min_new_tokens based on source phones length
-            try:
-                src_tokens = g2p_(src_text, src_text_language)[1]
-                # 음절 누락 방지를 위해 충분한 길이 보장: 6x -> 8x, 최소값 50 -> 80
-                desired_min_tokens = max(80, int(len(src_tokens) * 8))
-                ar_min_new_tokens = max(ar_min_new_tokens, desired_min_tokens)
-                print(f"DEBUG AR target min_new_tokens: {ar_min_new_tokens} (src_len={len(src_tokens)})")
-            except Exception:
-                pass
-
         else:
             # VC
             task = "vc"
