@@ -62,22 +62,22 @@ if __name__ == "__main__":
     # ===== Use locally trained models =====
     
     # Content-Style Tokenizer (fvq8192)
-    content_style_tokenizer_ckpt_path = "/app/data/vevo/models/fvq8192/checkpoint_backup/epoch-0813_step-2190000_loss-11.957558/pytorch_model.bin"
+    content_style_tokenizer_ckpt_path = "/home/ubuntu/tts-audio/nyoung/vevo-tts/ckpts/vevo/fvq8192/checkpoint_backup/epoch-0813_step-2190000_loss-11.957558/pytorch_model.bin"
 
     # Autoregressive Transformer (ar_synthesis)
     ar_cfg_path = "./models/vc/vevo/config/PhoneToVq8192.json"
-    ar_ckpt_path = "/app/data/vevo/models/ar_synthesis/checkpoint/epoch-0167_step-0214000_loss-0.058975//pytorch_model.bin"
+    ar_ckpt_path = "/home/ubuntu/tts-audio/nyoung/vevo-tts/ckpts/vevo/ar_synthesis/checkpoint_backup/epoch-0167_step-0214000_loss-0.058975/pytorch_model.bin"
 
     # Flow Matching Transformer (fm_contentstyle)
     fmt_cfg_path = "./models/vc/vevo/config/Vq8192ToMels.json"
-    fmt_ckpt_path = "/app/data/vevo/models/fm_contentstyle/checkpoint_backup/epoch-0060_step-0837000_loss-0.221667/pytorch_model.bin"
+    fmt_ckpt_path = "/home/ubuntu/tts-audio/nyoung/vevo-tts/ckpts/vevo/fm_contentstyle/checkpoint_backup/epoch-0060_step-0837000_loss-0.221667/pytorch_model.bin"
 
     # Vocoder (using HuggingFace for now)
     from huggingface_hub import snapshot_download
     local_dir = snapshot_download(
         repo_id="amphion/Vevo",
         repo_type="model",
-        cache_dir="/app/data/vevo/models/Vevo",
+        cache_dir="/home/ubuntu/tts-audio/nyoung/vevo-tts/ckpts/vevo/Vevo",
         allow_patterns=["acoustic_modeling/Vocoder/*"],
     )
     vocoder_cfg_path = "./models/vc/vevo/config/Vocoder.json"
@@ -128,7 +128,7 @@ if __name__ == "__main__":
 
     # ===== Prepare Output Directory =====
     date_str = datetime.now().strftime("%Y%m%d")
-    output_dir = f"/app/workspace/vevo-infer/{date_str}"
+    output_dir = f"/home/ubuntu/tts-audio/data/inference/{date_str}"
     os.makedirs(output_dir, exist_ok=True)
     
     file_uuid = str(uuid.uuid4())
