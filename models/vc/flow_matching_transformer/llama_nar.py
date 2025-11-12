@@ -53,7 +53,7 @@ class LlamaAdaptiveRMSNorm(nn.Module):
 class LlamaNARDecoderLayer(LlamaDecoderLayer):
     def __init__(self, config: LlamaConfig, layer_idx: int):
         """Override to adaptive layer norm"""
-        super().__init__(config)  # init attention, mlp, etc.
+        super().__init__(config, layer_idx=layer_idx)  # init attention, mlp, etc.
         self.input_layernorm = LlamaAdaptiveRMSNorm(
             config.hidden_size, eps=config.rms_norm_eps, dim_cond=config.hidden_size
         )
