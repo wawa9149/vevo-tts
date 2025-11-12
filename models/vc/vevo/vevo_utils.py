@@ -136,29 +136,53 @@ def build_vocoder_model(cfg, device):
     return vocoder_model
 
 
+def remove_rotary_keys(state_dict):
+    """주어진 state_dict에서 rotary_emb 관련 키를 제거하는 함수"""
+    rotary_keys = [
+        key for key in state_dict.keys() if key.endswith("self_attn.rotary_emb.inv_freq")
+    ]
+    for key in rotary_keys:
+        state_dict.pop(key, None)
+    return state_dict
+
 def load_checkpoint(build_model_func, cfg, ckpt_path, device):
     model = build_model_func(cfg, device)
+    
     # Support both directory (accelerate) and single-file checkpoints
     if os.path.isdir(ckpt_path):
+        print(f"Loading checkpoint from directory: {ckpt_path}")
         accelerate.load_checkpoint_and_dispatch(model, ckpt_path)
     elif isinstance(ckpt_path, str) and ckpt_path.endswith(".safetensors"):
+        print(f"Loading checkpoint from safetensors file: {ckpt_path}")
         safetensors.torch.load_model(model, ckpt_path)
     elif isinstance(ckpt_path, str) and ckpt_path.endswith(".bin"):
-        state = torch.load(ckpt_path, map_location="cpu")
-        if isinstance(state, dict) and "state_dict" in state:
-            model.load_state_dict(state["state_dict"])
-        elif isinstance(state, dict) and "model" in state:
-            inner = state["model"]
-            if isinstance(inner, dict) and "repcodec" in inner:
-                model.load_state_dict(inner["repcodec"])
+        print(f"Loading checkpoint from bin file: {ckpt_path}")
+        state = torch.load(ckpt_path, map_location=device)
+        
+        if isinstance(state, dict):
+            if "state_dict" in state:
+                state_dict = state["state_dict"]
+                state_dict = remove_rotary_keys(state_dict)
+                model.load_state_dict(state_dict, strict=False)
+            elif "model" in state:
+                inner = state["model"]
+                if isinstance(inner, dict):
+                    if "repcodec" in inner:
+                        model.load_state_dict(inner["repcodec"])
+                    else:
+                        inner = remove_rotary_keys(inner)
+                        model.load_state_dict(inner, strict=False)
+                else:
+                    raise ValueError(f"Unexpected format in state['model']: {type(inner)}")
             else:
-                model.load_state_dict(inner)
+                state = remove_rotary_keys(state)
+                model.load_state_dict(state, strict=False)
         else:
-            model.load_state_dict(state)
+            raise ValueError(f"Unexpected state format: {type(state)}")
     else:
         raise ValueError(f"Unrecognized checkpoint path: {ckpt_path}")
+    
     return model
-
 
 def count_parameters(model):
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
